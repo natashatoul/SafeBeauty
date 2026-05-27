@@ -1,0 +1,6 @@
+@SafeBeauty.API_HostAddress = http://localhost:5166
+
+GET {{SafeBeauty.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
