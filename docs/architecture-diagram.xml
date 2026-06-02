@@ -1,0 +1,114 @@
+<mxfile><diagram name="SafeBeauty Architecture">
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+<root>
+<mxCell id="0"/><mxCell id="1" parent="0"/>
+
+<!-- LAYER LABELS -->
+<mxCell id="L1" value="FRONTEND (React)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#001d6c;" vertex="1" parent="1"><mxGeometry x="20" y="20" width="200" height="30" as="geometry"/></mxCell>
+<mxCell id="L2" value="CONTROLLERS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#003087;" vertex="1" parent="1"><mxGeometry x="20" y="120" width="200" height="30" as="geometry"/></mxCell>
+<mxCell id="L3" value="SERVICES" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#1a5c1a;" vertex="1" parent="1"><mxGeometry x="20" y="340" width="200" height="30" as="geometry"/></mxCell>
+<mxCell id="L4" value="PATTERNS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#7d4e00;" vertex="1" parent="1"><mxGeometry x="20" y="620" width="200" height="30" as="geometry"/></mxCell>
+<mxCell id="L5" value="REPOSITORIES" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#5a0089;" vertex="1" parent="1"><mxGeometry x="20" y="900" width="200" height="30" as="geometry"/></mxCell>
+<mxCell id="L6" value="DOMAIN MODELS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#7d0000;" vertex="1" parent="1"><mxGeometry x="20" y="1120" width="200" height="30" as="geometry"/></mxCell>
+<mxCell id="L7" value="EXTERNAL APIs" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#555555;" vertex="1" parent="1"><mxGeometry x="20" y="620" width="200" height="30" as="geometry"/></mxCell>
+
+<!-- FRONTEND -->
+<mxCell id="FE" value="React Frontend&#xa;(Browser)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="620" y="20" width="400" height="60" as="geometry"/></mxCell>
+
+<!-- CONTROLLERS -->
+<mxCell id="C1" value="&lt;b&gt;AuthController&lt;/b&gt;&#xa;─────────────────&#xa;+ POST /api/auth/register(RegisterRequestDto) : AuthResponseDto&#xa;+ POST /api/auth/login(LoginRequestDto) : AuthResponseDto" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="240" y="120" width="360" height="80" as="geometry"/></mxCell>
+<mxCell id="C2" value="&lt;b&gt;ProductController&lt;/b&gt; [JWT required]&#xa;─────────────────&#xa;+ GET /api/products/barcode/{barcode} : ProductAnalysisDto&#xa;+ POST /api/products/analyze(AnalyzeByTextRequestDto) : ProductAnalysisDto" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="620" y="120" width="380" height="80" as="geometry"/></mxCell>
+<mxCell id="C3" value="&lt;b&gt;HistoryController&lt;/b&gt; [JWT required]&#xa;─────────────────&#xa;+ GET /api/history : List&lt;HistoryItemDto&gt;&#xa;+ POST /api/history(HistoryItemDto) : void&#xa;+ DELETE /api/history/{id} : void" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1020" y="120" width="360" height="80" as="geometry"/></mxCell>
+
+<!-- SERVICES -->
+<mxCell id="S1" value="&lt;b&gt;AuthService&lt;/b&gt;&#xa;─────────────────&#xa;+ Register(RegisterRequestDto) : AuthResponseDto&#xa;+ Login(LoginRequestDto) : AuthResponseDto&#xa;- GenerateJwtToken(User) : string" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="240" y="340" width="320" height="90" as="geometry"/></mxCell>
+<mxCell id="S2" value="&lt;b&gt;IngredientClassificationService&lt;/b&gt;&#xa;─────────────────&#xa;+ ClassifyList(List&lt;string&gt;, UserProfileDto) : List&lt;IngredientResultDto&gt;&#xa;- ClassifyOne(string) : IngredientResultDto&#xa;[uses: Strategy Pattern]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="580" y="340" width="360" height="90" as="geometry"/></mxCell>
+<mxCell id="S3" value="&lt;b&gt;AIAnalysisService&lt;/b&gt;&#xa;─────────────────&#xa;+ GetAnalysis(List&lt;IngredientResultDto&gt;, UserProfileDto) : AIAnalysisResultDto&#xa;- BuildPrompt(List&lt;IngredientResultDto&gt;, UserProfileDto) : string&#xa;[Singleton via DI]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="960" y="340" width="360" height="90" as="geometry"/></mxCell>
+<mxCell id="S4" value="&lt;b&gt;PersonalisationService&lt;/b&gt;&#xa;─────────────────&#xa;+ ApplyUserProfile(List&lt;IngredientResultDto&gt;, UserProfileDto) : List&lt;IngredientResultDto&gt;&#xa;+ CalculateMatchScore(List&lt;IngredientResultDto&gt;, UserProfileDto) : int" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="580" y="450" width="360" height="80" as="geometry"/></mxCell>
+<mxCell id="S5" value="&lt;b&gt;HistoryService&lt;/b&gt;&#xa;─────────────────&#xa;+ GetUserHistory(int userId) : List&lt;HistoryItemDto&gt;&#xa;+ AddToHistory(int userId, HistoryItemDto) : void&#xa;+ DeleteFromHistory(int historyId) : void" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1020" y="450" width="300" height="80" as="geometry"/></mxCell>
+
+<!-- PATTERNS -->
+<mxCell id="P1" value="&lt;&lt;interface&gt;&gt;&#xa;&lt;b&gt;IClassificationStrategy&lt;/b&gt;&#xa;─────────────────&#xa;+ Classify(string inci) : IngredientResultDto?" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="500" y="620" width="280" height="70" as="geometry"/></mxCell>
+<mxCell id="P2" value="&lt;b&gt;LocalDatabaseStrategy&lt;/b&gt;&#xa;─────────────────&#xa;+ Classify(string inci) : IngredientResultDto?&#xa;[searches SQLite DB]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="380" y="730" width="260" height="70" as="geometry"/></mxCell>
+<mxCell id="P3" value="&lt;b&gt;HuggingFaceStrategy&lt;/b&gt;&#xa;─────────────────&#xa;+ Classify(string inci) : IngredientResultDto?&#xa;[calls Hugging Face API]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="660" y="730" width="260" height="70" as="geometry"/></mxCell>
+<mxCell id="P4" value="&lt;&lt;interface&gt;&gt;&#xa;&lt;b&gt;IAnalysisResultFactory&lt;/b&gt;&#xa;─────────────────&#xa;+ CreateResult(List&lt;IngredientResultDto&gt;, UserProfileDto?) : ProductAnalysisDto" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="960" y="620" width="320" height="70" as="geometry"/></mxCell>
+<mxCell id="P5" value="&lt;b&gt;StandardAnalysisFactory&lt;/b&gt;&#xa;─────────────────&#xa;+ CreateResult(...) : ProductAnalysisDto&#xa;[no user profile]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="880" y="730" width="240" height="70" as="geometry"/></mxCell>
+<mxCell id="P6" value="&lt;b&gt;PersonalisedAnalysisFactory&lt;/b&gt;&#xa;─────────────────&#xa;+ CreateResult(...) : ProductAnalysisDto&#xa;[with user profile]" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1140" y="730" width="240" height="70" as="geometry"/></mxCell>
+
+<!-- EXTERNAL APIs -->
+<mxCell id="EXT1" value="&lt;b&gt;Hugging Face API&lt;/b&gt;&#xa;─────────────────&#xa;Mistral-7B / Llama-3&#xa;[HTTP POST via HttpClient]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1420" y="340" width="220" height="70" as="geometry"/></mxCell>
+<mxCell id="EXT2" value="&lt;b&gt;Open Beauty Facts API&lt;/b&gt;&#xa;─────────────────&#xa;Barcode lookup&#xa;[HTTP GET via HttpClient]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1420" y="430" width="220" height="70" as="geometry"/></mxCell>
+
+<!-- REPOSITORIES -->
+<mxCell id="R1" value="&lt;&lt;interface&gt;&gt;&#xa;&lt;b&gt;IIngredientRepository&lt;/b&gt;&#xa;─────────────────&#xa;+ GetByInciName(string) : Ingredient?&#xa;+ GetSynonyms(string) : List&lt;string&gt;&#xa;+ GetRestrictions(int) : List&lt;AnnexRestriction&gt;&#xa;+ GetConditionFlags(int) : List&lt;SkinConditionFlag&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;fontSize=11;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="240" y="900" width="320" height="90" as="geometry"/></mxCell>
+<mxCell id="R2" value="&lt;&lt;interface&gt;&gt;&#xa;&lt;b&gt;IUserRepository&lt;/b&gt;&#xa;─────────────────&#xa;+ GetByEmail(string) : User?&#xa;+ GetById(int) : User?&#xa;+ Create(User) : void" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;fontSize=11;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="580" y="900" width="280" height="90" as="geometry"/></mxCell>
+<mxCell id="R3" value="&lt;&lt;interface&gt;&gt;&#xa;&lt;b&gt;IHistoryRepository&lt;/b&gt;&#xa;─────────────────&#xa;+ GetByUserId(int) : List&lt;ScanHistory&gt;&#xa;+ Add(ScanHistory) : void&#xa;+ Delete(int) : void" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacingLeft=10;fontSize=11;fontStyle=2;" vertex="1" parent="1"><mxGeometry x="880" y="900" width="280" height="90" as="geometry"/></mxCell>
+
+<!-- DOMAIN MODELS -->
+<mxCell id="D1" value="&lt;b&gt;Ingredient&lt;/b&gt;&#xa;─────────────────&#xa;+ Id : int&#xa;+ InciName : string&#xa;+ CasNumber : string&#xa;+ Function : string&#xa;+ SafetyRating : SafetyRating&#xa;+ Source : string" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="240" y="1120" width="240" height="120" as="geometry"/></mxCell>
+<mxCell id="D2" value="&lt;b&gt;IngredientSynonym&lt;/b&gt;&#xa;─────────────────&#xa;+ Id : int&#xa;+ IngredientId : int (FK)&#xa;+ SynonymName : string" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="500" y="1120" width="220" height="90" as="geometry"/></mxCell>
+<mxCell id="D3" value="&lt;b&gt;AnnexRestriction&lt;/b&gt;&#xa;─────────────────&#xa;+ Id : int&#xa;+ IngredientId : int (FK)&#xa;+ AnnexType : AnnexType&#xa;+ MaxConcentration : string&#xa;+ ProductType : string&#xa;+ RestrictionDetail : string" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="740" y="1120" width="240" height="120" as="geometry"/></mxCell>
+<mxCell id="D4" value="&lt;b&gt;SkinConditionFlag&lt;/b&gt;&#xa;─────────────────&#xa;+ Id : int&#xa;+ IngredientId : int (FK)&#xa;+ Condition : Condition&#xa;+ FlagType : FlagType&#xa;+ Description : string" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1000" y="1120" width="220" height="110" as="geometry"/></mxCell>
+<mxCell id="D5" value="&lt;b&gt;User&lt;/b&gt;&#xa;─────────────────&#xa;+ Id : int&#xa;+ Email : string&#xa;+ PasswordHash : string&#xa;+ CreatedAt : DateTime" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1240" y="1120" width="220" height="100" as="geometry"/></mxCell>
+<mxCell id="D6" value="&lt;b&gt;ScanHistory&lt;/b&gt;&#xa;─────────────────&#xa;+ Id : int&#xa;+ UserId : int (FK)&#xa;+ Barcode : string&#xa;+ ProductName : string&#xa;+ IngredientsJson : string&#xa;+ ScannedAt : DateTime" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacingLeft=10;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1480" y="1120" width="220" height="120" as="geometry"/></mxCell>
+
+<!-- DTOs -->
+<mxCell id="DTO1" value="&lt;b&gt;UserProfileDto&lt;/b&gt; (from localStorage)&#xa;─────────────────&#xa;+ SkinType : string&#xa;+ HairCondition : string&#xa;+ Conditions : List&lt;string&gt;&#xa;+ AgeGroup : string" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1420" y="200" width="220" height="90" as="geometry"/></mxCell>
+<mxCell id="DTO2" value="&lt;b&gt;ProductAnalysisDto&lt;/b&gt;&#xa;─────────────────&#xa;+ ProductName : string&#xa;+ Ingredients : List&lt;IngredientResultDto&gt;&#xa;+ AISummary : string&#xa;+ MatchScore : int?" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;align=left;spacingLeft=10;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1420" y="560" width="220" height="90" as="geometry"/></mxCell>
+
+<!-- ENUMS -->
+<mxCell id="E1" value="&lt;&lt;enum&gt;&gt; &lt;b&gt;SafetyRating&lt;/b&gt;&#xa;Green | Amber | Red | Grey" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="240" y="1270" width="240" height="40" as="geometry"/></mxCell>
+<mxCell id="E2" value="&lt;&lt;enum&gt;&gt; &lt;b&gt;AnnexType&lt;/b&gt;&#xa;II | III | IV | V | VI" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="500" y="1270" width="220" height="40" as="geometry"/></mxCell>
+<mxCell id="E3" value="&lt;&lt;enum&gt;&gt; &lt;b&gt;Condition&lt;/b&gt;&#xa;Psoriasis | Rosacea | Acne | Alopecia | AtopicDermatitis" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="740" y="1270" width="320" height="40" as="geometry"/></mxCell>
+<mxCell id="E4" value="&lt;&lt;enum&gt;&gt; &lt;b&gt;FlagType&lt;/b&gt;&#xa;Avoid | Beneficial" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1080" y="1270" width="200" height="40" as="geometry"/></mxCell>
+
+<!-- CONNECTIONS -->
+<!-- Frontend to Controllers -->
+<mxCell id="A1" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="FE" target="C1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A2" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="FE" target="C2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A3" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="FE" target="C3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+<!-- Controllers to Services -->
+<mxCell id="A4" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="C1" target="S1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A5" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="C2" target="S2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A6" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="C2" target="S3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A7" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="C3" target="S5" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A8" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="S2" target="S4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+<!-- Strategy Pattern -->
+<mxCell id="A9" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=open;" edge="1" source="P1" target="P2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A10" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=open;" edge="1" source="P1" target="P3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A11" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="S2" target="P1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+<!-- Factory Pattern -->
+<mxCell id="A12" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=open;" edge="1" source="P4" target="P5" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A13" style="edgeStyle=orthogonalEdgeStyle;dashed=1;endArrow=open;" edge="1" source="P4" target="P6" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A14" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="S3" target="P4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+<!-- Services to Repositories -->
+<mxCell id="A15" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="S1" target="R2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A16" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="P2" target="R1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A17" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="S5" target="R3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+<!-- Repositories to Domain -->
+<mxCell id="A18" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="R1" target="D1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A19" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="R2" target="D5" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A20" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="R3" target="D6" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+<!-- Domain relationships -->
+<mxCell id="A21" style="edgeStyle=orthogonalEdgeStyle;endArrow=ERmany;" edge="1" source="D1" target="D2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A22" style="edgeStyle=orthogonalEdgeStyle;endArrow=ERmany;" edge="1" source="D1" target="D3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A23" style="edgeStyle=orthogonalEdgeStyle;endArrow=ERmany;" edge="1" source="D1" target="D4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A24" style="edgeStyle=orthogonalEdgeStyle;endArrow=ERmany;" edge="1" source="D5" target="D6" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+<!-- External APIs -->
+<mxCell id="A25" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="S3" target="EXT1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A26" style="edgeStyle=orthogonalEdgeStyle;" edge="1" source="C2" target="EXT2" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+<!-- Enums to Domain -->
+<mxCell id="A27" style="edgeStyle=orthogonalEdgeStyle;dashed=1;" edge="1" source="E1" target="D1" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A28" style="edgeStyle=orthogonalEdgeStyle;dashed=1;" edge="1" source="E2" target="D3" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A29" style="edgeStyle=orthogonalEdgeStyle;dashed=1;" edge="1" source="E3" target="D4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+<mxCell id="A30" style="edgeStyle=orthogonalEdgeStyle;dashed=1;" edge="1" source="E4" target="D4" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+</root></mxGraphModel></diagram></mxfile>
