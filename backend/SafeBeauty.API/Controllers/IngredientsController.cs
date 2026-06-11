@@ -114,19 +114,25 @@ namespace SafeBeauty.API.Controllers
         [HttpPost("analyse")]
         public async Task<ActionResult<AnalyseResponse>> Analyse([FromBody] AnalyseRequest request)
         {
+            if (request.Ingredients == null || request.Ingredients.Count == 0)
+            {
+              return BadRequest("Ingredient list cannot be empty.");     
+            }
+            
             var response = new AnalyseResponse();
             foreach (var name in request.Ingredients)
             {
+                var cleanedName = name.Trim().ToUpper();
                 // Look up ingredient by INCI name 
                 var ingredient = await _context.Ingredients
                 .Include(i => i.Category)
                 .ThenInclude(c => c.ConditionRules) // load condition rules via category
-                .FirstOrDefaultAsync(i => i.InciName.ToLower() == name.ToLower());
+                .FirstOrDefaultAsync(i => i.InciName == cleanedName);
 
                 if (ingredient == null)
                 {
                     // If ingredient is not found in DB - will sent to Hugging Face
-                    response.UnknownIngredients.Add(name);
+                    response.UnknownIngredients.Add(cleanedName);
                     continue;
                 }
 
