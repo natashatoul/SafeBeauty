@@ -8,18 +8,21 @@ using Microsoft.EntityFrameworkCore;
 using SafeBeauty.API.Data;
 using SafeBeauty.API.DTOs;
 using SafeBeauty.API.Models;
+using SafeBeauty.API.Services;
 
 namespace SafeBeauty.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class IngredientsController : ControllerBase
+    public class IngredientsController : ControllerBase 
     {
         private readonly SafeBeautyDbContext _context;
+        private readonly IngredientAnalysisService _analysisService;
 
-        public IngredientsController(SafeBeautyDbContext context)
+        public IngredientsController(SafeBeautyDbContext context, IngredientAnalysisService analysisService)
         {
             _context = context;
+            _analysisService = analysisService;
         }
 
         // GET: api/Ingredients
@@ -119,40 +122,10 @@ namespace SafeBeauty.API.Controllers
               return BadRequest("Ingredient list cannot be empty.");     
             }
             
-            var response = new AnalyseResponse();
-            foreach (var name in request.Ingredients)
-            {
-                var cleanedName = name.Trim().ToUpper();
-                // Look up ingredient by INCI name 
-                var ingredient = await _context.Ingredients
-                .Include(i => i.Category)
-                .ThenInclude(c => c.ConditionRules) // load condition rules via category
-                .FirstOrDefaultAsync(i => i.InciName == cleanedName);
-
-                if (ingredient == null)
-                {
-                    // If ingredient is not found in DB - will sent to Hugging Face
-                    response.UnknownIngredients.Add(cleanedName);
-                    continue;
-                }
-
-                var result = new IngredientResultDto
-                {
-                    InciName = ingredient.InciName,
-                    SafetyRating = ingredient.SafetyRating.ToString(),
-                    Category = ingredient.Category?.Name ?? string.Empty,
-                    Function = ingredient.Function,
-                    ConditionFlags = ingredient.Category?.ConditionRules.Select(cr => new ConditionFlagDto
-                    {
-                        Condition = cr.Condition.ToString(),
-                        FlagType = cr.FlagType.ToString(),
-                        Notes = cr.Notes,
-                        EvidenceSource = cr.EvidenceSource
-                    }).ToList() ?? new()
-                };
-                response.Results.Add(result);
-            }
+            var response = await _analysisService.AnalyseAsync(request.Ingredients);
             return Ok(response);
+            
+            
         }
     }
 }

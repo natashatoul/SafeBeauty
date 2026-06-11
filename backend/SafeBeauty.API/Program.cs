@@ -1,5 +1,6 @@
 using SafeBeauty.API.Data;
 using Microsoft.EntityFrameworkCore;
+using SafeBeauty.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,7 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
     options.UseSqlite("Data Source=safebeauty.db"));
 builder.Services.AddScoped<DataSeeder>();
+builder.Services.AddScoped<IngredientAnalysisService>();
 
 var app = builder.Build();
 
