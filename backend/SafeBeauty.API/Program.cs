@@ -14,6 +14,7 @@ builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
     options.UseSqlite("Data Source=safebeauty.db"));
 builder.Services.AddScoped<DataSeeder>();
 builder.Services.AddScoped<IngredientAnalysisService>();
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
