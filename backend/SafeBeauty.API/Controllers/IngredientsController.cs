@@ -31,7 +31,7 @@ namespace SafeBeauty.API.Controllers
         {
             var query = _context.Ingredients.AsQueryable();
             if (!string.IsNullOrWhiteSpace(search))
-                query = query.Where(i => i.InciName.Contains(search));
+                query = query.Where(i => i.InciName.Contains(search.ToUpper()));
             return await query.Take(50).ToListAsync();
         }
 
