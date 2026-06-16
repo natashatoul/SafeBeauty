@@ -10,8 +10,18 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
-builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
-    options.UseSqlite("Data Source=safebeauty.db"));
+// builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
+//     options.UseSqlite("Data Source=safebeauty.db"));
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDbContext<SafeBeautyDbContext>(options => options.UseSqlite(connectionString));
+}
+else
+{
+    builder.Services.AddDbContext<SafeBeautyDbContext>(options => options.UseSqlServer(connectionString));
+}
 builder.Services.AddScoped<DataSeeder>();
 builder.Services.AddScoped<IngredientAnalysisService>();
 builder.Services.AddHttpClient();
