@@ -12,7 +12,7 @@ public class DataSeeder
     public DataSeeder(SafeBeautyDbContext context)
     {
         _context = context;
-        _dataPath = Path.Combine(Directory.GetCurrentDirectory(), "..", "data");
+        _dataPath = Path.Combine(AppContext.BaseDirectory, "SeedData");
         // when use dotnet run GetCurrentDirectory() returns project folder
         // ".." redirect to the folder backend/data/
     }

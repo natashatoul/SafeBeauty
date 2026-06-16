@@ -1,6 +1,8 @@
 # .NET
 bin/
 obj/
+publish/
+*.zip
 *.db
 *.db-shm
 *.db-wal
