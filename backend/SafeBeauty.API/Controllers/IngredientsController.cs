@@ -27,19 +27,57 @@ namespace SafeBeauty.API.Controllers
 
         // GET: api/Ingredients
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Ingredient>>> GetIngredients([FromQuery] string? search)
+        public async Task<ActionResult<IEnumerable<IngredientDto>>> GetIngredients([FromQuery] string? search)
         {
-            var query = _context.Ingredients.AsQueryable();
+            var query = _context.Ingredients.Include(i => i.Category).AsQueryable();
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(i => i.InciName.Contains(search.ToUpper()));
-            return await query.Take(50).ToListAsync();
+
+            return await query
+                .Take(50)
+                .Select(i => new IngredientDto
+                {
+                    Id = i.Id,
+                    InciName = i.InciName,
+                    CasNumber = i.CasNumber,
+                    Function = i.Function,
+                    CategoryId = i.CategoryId,
+                    SafetyRating = i.SafetyRating.ToString(),
+                    Source = i.Source,
+                    Category = new IngredientCategoryDto
+                    {
+                        Id = i.Category.Id,
+                        Name = i.Category.Name,
+                        Description = i.Category.Description
+                    }
+                })
+                .ToListAsync();
         }
 
         // GET: api/Ingredients/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Ingredient>> GetIngredient(int id)
+        public async Task<ActionResult<IngredientDto>> GetIngredient(int id)
         {
-            var ingredient = await _context.Ingredients.FindAsync(id);
+            var ingredient = await _context.Ingredients
+                .Include(i => i.Category)
+                .Where(i => i.Id == id)
+                .Select(i => new IngredientDto
+                {
+                    Id = i.Id,
+                    InciName = i.InciName,
+                    CasNumber = i.CasNumber,
+                    Function = i.Function,
+                    CategoryId = i.CategoryId,
+                    SafetyRating = i.SafetyRating.ToString(),
+                    Source = i.Source,
+                    Category = new IngredientCategoryDto
+                    {
+                        Id = i.Category.Id,
+                        Name = i.Category.Name,
+                        Description = i.Category.Description
+                    }
+                })
+                .FirstOrDefaultAsync();
 
             if (ingredient == null)
             {

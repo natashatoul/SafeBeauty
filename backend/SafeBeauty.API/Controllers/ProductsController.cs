@@ -38,11 +38,16 @@ public class ProductsController : ControllerBase
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
+        if (!root.TryGetProperty("status", out var statusEl) ||
+            !statusEl.TryGetInt32(out var status))
+        return StatusCode(StatusCodes.Status502BadGateway, "Unexpected response from Open Beauty Facts.");
+
         // Check if product was found (status 0 = not found, 1 - found)
-        if (root.GetProperty("status").GetInt32() == 0)
+        if (status == 0)
         return NotFound("Product not found in Open Beauty Facts database.");
 
-        var product = root.GetProperty("product");
+        if (!root.TryGetProperty("product", out var product))
+        return StatusCode(StatusCodes.Status502BadGateway, "Product data is missing from Open Beauty Facts response.");
 
         // Extract product name
         var productName = product.TryGetProperty("product_name", out var nameEl)
@@ -50,7 +55,8 @@ public class ProductsController : ControllerBase
 
         // Extrack ingredient names from ingredients array
         var ingredientNames = new List<string>();
-        if (product.TryGetProperty("ingredients", out var ingredientsEl))
+        if (product.TryGetProperty("ingredients", out var ingredientsEl) &&
+            ingredientsEl.ValueKind == JsonValueKind.Array)
         {
             foreach (var item in ingredientsEl.EnumerateArray())
             {
