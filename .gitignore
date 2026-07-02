@@ -50,6 +50,9 @@ yarn-error.log*
 Thumbs.db
 desktop.ini
 
+# Claude Code
+.agents
+
 # Reference data files
 backend/data/*.pdf
 backend/data/*.docx
