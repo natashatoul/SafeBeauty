@@ -33,12 +33,14 @@ builder.Services.AddScoped<DataSeeder>();
 builder.Services.AddScoped<IngredientAnalysisService>();
 builder.Services.AddHttpClient();
 
-// heandshake with frontend
+// CORS: allow the deployed frontend origin to call this API from the browser
+// CORS- Cross-Origin Resource Sharing - protection for browser
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(
+                "https://natashatoul.github.io",
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "http://localhost:5174")
@@ -69,6 +71,8 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 
 app.MapControllers();
+
+app.MapGet("/", () => "SafeBeauty API is running");
 
 app.Run();
 

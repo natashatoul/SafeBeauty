@@ -5,7 +5,7 @@ import axios from 'axios'
 
 // Base URL for the backend API, kept in one place so it only needs
 // to change in a single spot (e.g. when deploying to Azure later).
-const API_URL = '/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 const stopScanner = async (scanner) => {
   const state = scanner.getState()
