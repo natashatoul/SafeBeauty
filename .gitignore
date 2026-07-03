@@ -1,0 +1,58 @@
+# .NET
+bin/
+obj/
+publish/
+publish-output/
+*.zip
+*.db
+*.db-shm
+*.db-wal
+*.user
+*.suo
+.vs/
+*.csproj.user
+appsettings.Development.json
+appsettings.Local.json
+*.pfx
+*.snk
+
+# .NET secrets
+**/secrets.json
+**/appsettings.*.json
+!**/appsettings.json
+!**/appsettings.Development.json.example
+
+# NuGet
+*.nupkg
+.nuget/
+
+# React / Node
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code
+.agents
+
+# Reference data files
+backend/data/*.pdf
+backend/data/*.docx
