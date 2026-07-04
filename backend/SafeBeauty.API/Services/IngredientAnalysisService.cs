@@ -8,11 +8,13 @@ namespace SafeBeauty.API.Services;
 public class IngredientAnalysisService
 {
     private readonly SafeBeautyDbContext _context;
+    private readonly HuggingFaceService _huggingFace;
 
     // Constructor injection - SafeBeautyDbContext is provided by ASP.NET DI container
-    public IngredientAnalysisService(SafeBeautyDbContext context)
+    public IngredientAnalysisService(SafeBeautyDbContext context, HuggingFaceService huggingFace)
     {
         _context = context;
+        _huggingFace = huggingFace;
     }
 
     public async Task<AnalyseResponse> AnalyseAsync(List<string> ingredients)
@@ -29,7 +31,8 @@ public class IngredientAnalysisService
 
             if (ingredient == null)
             {
-                response.UnknownIngredients.Add(cleanedName);
+                var aiResult = await _huggingFace.ClassifyAsync(cleanedName);
+                response.UnknownIngredients.Add(aiResult);
                 continue;
             }
 

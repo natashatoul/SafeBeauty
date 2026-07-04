@@ -59,8 +59,8 @@ function ResultsPage() {
           {/* Same pattern as above: loop through the array and render one
               UnknownIngredientCard per name, instead of writing the same
               <div> markup inline for every item */}
-          {results.unknownIngredients.map((name, i) => (
-            <UnknownIngredientCard key={i} name={name} />
+          {results.unknownIngredients.map((item, i) => (
+            <UnknownIngredientCard key={i} name={item.name} aiLabel={item.aiLabel} confidence={item.confidence} />
           ))}
         </div>
       )}

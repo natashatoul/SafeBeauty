@@ -30,6 +30,7 @@ builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
 //     builder.Services.AddDbContext<SafeBeautyDbContext>(options => options.UseSqlServer(connectionString));
 // }
 builder.Services.AddScoped<DataSeeder>();
+builder.Services.AddHttpClient<HuggingFaceService>();
 builder.Services.AddScoped<IngredientAnalysisService>();
 builder.Services.AddHttpClient();
 

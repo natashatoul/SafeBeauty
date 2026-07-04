@@ -56,3 +56,5 @@ desktop.ini
 # Reference data files
 backend/data/*.pdf
 backend/data/*.docx
+
+appsettings.json
