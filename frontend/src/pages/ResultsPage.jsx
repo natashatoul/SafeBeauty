@@ -42,6 +42,12 @@ function ResultsPage() {
   return (
     <div>
       <h2>Analysis Results</h2>
+      {results.aiSummary && (
+        <div style={{background: '#f5f5f5', borderLeft: '4px solid #2196f3', padding: '12px', marginBottom: '16px'}}>
+          <strong>Product Insight</strong>
+          <p>{results.aiSummary}</p>
+        </div>  
+      )}
 
       {/* .map() loops through each analyzed ingredient in results.results.
           Each one is rendered by IngredientCard, which handles its own

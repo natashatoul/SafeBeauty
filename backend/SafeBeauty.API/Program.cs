@@ -31,6 +31,7 @@ builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
 // }
 builder.Services.AddScoped<DataSeeder>();
 builder.Services.AddHttpClient<HuggingFaceService>();
+builder.Services.AddHttpClient<AiSummaryService>();
 builder.Services.AddScoped<IngredientAnalysisService>();
 builder.Services.AddHttpClient();
 

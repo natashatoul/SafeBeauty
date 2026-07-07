@@ -9,12 +9,14 @@ public class IngredientAnalysisService
 {
     private readonly SafeBeautyDbContext _context;
     private readonly HuggingFaceService _huggingFace;
+    private readonly AiSummaryService _aiSummary;
 
     // Constructor injection - SafeBeautyDbContext is provided by ASP.NET DI container
-    public IngredientAnalysisService(SafeBeautyDbContext context, HuggingFaceService huggingFace)
+    public IngredientAnalysisService(SafeBeautyDbContext context, HuggingFaceService huggingFace, AiSummaryService aiSummary)
     {
         _context = context;
         _huggingFace = huggingFace;
+        _aiSummary = aiSummary;
     }
 
     public async Task<AnalyseResponse> AnalyseAsync(List<string> ingredients)
@@ -55,6 +57,7 @@ public class IngredientAnalysisService
             };
             response.Results.Add(result);
         }
+        response.AiSummary = await _aiSummary.SummariseAsync(response, new List<string>());
         return response;
         
     }

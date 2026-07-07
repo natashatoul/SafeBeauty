@@ -2,8 +2,9 @@ git status
 
 git add .
 
-$msg = Read-Host "Commit message"
+$title = Read-Host "Commit title"
+$body = Read-Host "Commit body"
 
-git commit -m "$msg"
+git commit -m "$title" -m "$body"
 
 git push

@@ -1,0 +1,271 @@
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using SafeBeauty.API.DTOs;
+
+namespace SafeBeauty.API.Services;
+
+public class AiSummaryService
+{
+    // HttpClient is the .NET object that sends HTTP requests.
+    // We do not create it with "new HttpClient()" here; ASP.NET Core injects it
+    // through dependency injection when Program.cs uses AddHttpClient<AiSummaryService>().
+    private readonly HttpClient _httpClient;
+
+    // Hugging Face LLM token from configuration.
+    // Locally it comes from "HuggingFace": { "LlmApiKey": "..." } in appsettings.Development.json
+    // or from an environment variable named HuggingFace__LlmApiKey.
+    private readonly string _apiKey;
+
+    // Logger lets us record what went wrong without crashing the application.
+    // The user still sees the fallback summary, while we can inspect the server logs.
+    private readonly ILogger<AiSummaryService> _logger;
+
+    // Hugging Face's OpenAI-compatible chat endpoint.
+    // This endpoint expects "messages" with roles like system/user/assistant.
+    private const string ChatUrl = "https://router.huggingface.co/v1/chat/completions";
+
+    // The model that writes the product summary.
+    // If this model is unavailable for your token/provider later, this is the
+    // one string we can swap without changing the rest of the service.
+    private const string ModelId = "meta-llama/Llama-3.1-8B-Instruct";
+
+    public AiSummaryService(
+        HttpClient httpClient,
+        IConfiguration configuration,
+        ILogger<AiSummaryService> logger)
+    {
+        _httpClient = httpClient;
+        _apiKey = configuration["HuggingFace:LlmApiKey"] ?? string.Empty;
+        _logger = logger;
+    }
+
+    public async Task<string> SummariseAsync(AnalyseResponse results, List<string> userConditions)
+    {
+        // Always build a deterministic fallback first.
+        // This is our safety net: if Hugging Face is slow, unavailable, unauthorised,
+        // or returns a format we do not understand, the app still shows a useful summary.
+        var fallback = BuildFallbackSummary(results);
+
+        // If the token is missing, there is no point making a network request.
+        // Returning fallback here avoids a predictable 401 Unauthorized error.
+        if (string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _logger.LogWarning("No Hugging Face LLM API key found; using fallback summary.");
+            return fallback;
+        }
+
+        try
+        {
+            // BuildMessages returns two strings:
+            //   systemMessage = rules for the model ("do not invent facts")
+            //   userMessage   = the actual analysis data for this product
+            var (systemMessage, userMessage) = BuildMessages(results, userConditions);
+
+            // Anonymous object: a temporary C# object that matches the JSON shape
+            // expected by the Hugging Face chat endpoint.
+            var requestBody = new
+            {
+                model = ModelId,
+                messages = new[]
+                {
+                    // "system" is the instruction layer: it tells the model how to behave.
+                    new { role = "system", content = systemMessage },
+
+                    // "user" is the data layer: it contains this product's analysis.
+                    new { role = "user", content = userMessage }
+                },
+
+                // Maximum answer length. 150 tokens is enough for a short 2-3 sentence summary.
+                max_tokens = 150,
+
+                // Low temperature makes the model less creative and more predictable.
+                // For safety-related explanations, we want cautious wording, not imagination.
+                temperature = 0.3
+            };
+
+            // Convert the C# object into JSON text before sending it over HTTP.
+            var json = JsonSerializer.Serialize(requestBody);
+
+            // Create one HTTP POST request to the HF chat endpoint.
+            // "using var" disposes the request object when this method finishes.
+            using var request = new HttpRequestMessage(HttpMethod.Post, ChatUrl);
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            // Authorization header: "Bearer" + token.
+            // Without this header, Hugging Face will reject the request.
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+
+            // Send the request and read the raw JSON response body.
+            var response = await _httpClient.SendAsync(request);
+            var responseJson = await response.Content.ReadAsStringAsync();
+
+            // Non-success status codes include 401, 404, 429, 500, 503, etc.
+            // We log the problem for debugging and return fallback to the frontend.
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "HF chat LLM returned {StatusCode}: {Body}",
+                    (int)response.StatusCode,
+                    responseJson);
+                return fallback;
+            }
+
+            // Parse the JSON response so we can navigate through its properties.
+            using var doc = JsonDocument.Parse(responseJson);
+            var root = doc.RootElement;
+
+            // Expected chat response shape:
+            // {
+            //   "choices": [
+            //     { "message": { "role": "assistant", "content": "summary text" } }
+            //   ]
+            // }
+            if (root.TryGetProperty("choices", out var choices)
+                && choices.ValueKind == JsonValueKind.Array
+                && choices.GetArrayLength() > 0)
+            {
+                var message = choices[0].GetProperty("message");
+                var text = message.GetProperty("content").GetString();
+
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    return text.Trim();
+                }
+            }
+
+            // If the request succeeded but the response did not contain usable text,
+            // keep the app stable and return the deterministic summary.
+            _logger.LogWarning("HF chat LLM response had no usable content: {Body}", responseJson);
+            return fallback;
+        }
+        catch (Exception ex)
+        {
+            // Catch network errors, timeouts, JSON parsing errors, and unexpected HF issues.
+            // The user should not see a broken results page just because the AI layer failed.
+            _logger.LogWarning(ex, "AI summary failed, using fallback.");
+            return fallback;
+        }
+    }
+
+    // Turns a classifier confidence score into plain-English wording.
+    // This is deliberately done in C#, not by the LLM, so the same score always
+    // produces the same phrase. That makes the output reproducible and easier
+    // to defend: the model explains the result, but our code controls how much
+    // certainty is communicated to the user.
+    private static string DescribeConfidence(double confidence)
+    {
+        // Confidence may arrive as 0.56 (fraction) or 56 (percentage).
+        // This ternary operator is a short if/else:
+        //   condition ? value-if-true : value-if-false
+        // After this line, percent is always on a 0-100 scale.
+        var percent = confidence <= 1.0 ? confidence * 100.0 : confidence;
+
+        // A switch expression chooses the first matching threshold from top to bottom.
+        // "_" means "anything that did not match the previous cases".
+        return percent switch
+        {
+            >= 90 => "high confidence",
+            >= 75 => "moderate confidence",
+            >= 60 => "limited confidence",
+            _ => "low confidence"
+        };
+    }
+
+    private static (string systemMessage, string userMessage) BuildMessages(
+        AnalyseResponse results,
+        List<string> userConditions)
+    {
+        // Known ingredients are already analysed by our deterministic backend.
+        // We include only the fields the model is allowed to explain.
+        var known = results.Results
+            .Select(r => $"{r.InciName} ({r.SafetyRating}, {r.Category})")
+            .ToList();
+
+        // Unknown ingredients are not in the database, so their label comes from
+        // the existing zero-shot classifier. The confidence WORD is chosen here
+        // in C# and then handed to the LLM already decided.
+        var unknown = results.UnknownIngredients
+            .Select(u =>
+            {
+                // Normalise the score only for displaying a clean percentage.
+                // The DescribeConfidence method does its own normalisation too,
+                // so it is safe whether Confidence is stored as 0.56 or 56.
+                var percent = u.Confidence <= 1.0 ? u.Confidence * 100.0 : u.Confidence;
+                var rounded = (int)Math.Round(percent);
+                var confidenceWord = DescribeConfidence(u.Confidence);
+
+                // The escaped \" characters print real double quotes around the AI label.
+                return $"{u.Name} - not found in database; AI classifier suggests \"{u.AiLabel}\" with {confidenceWord} ({rounded}%)";
+            })
+            .ToList();
+
+        // These concerns come from our own condition rules, not from the LLM.
+        // This supports the "LLM explains, deterministic system decides" architecture.
+        var concerns = results.Results
+            .Where(r => r.ConditionFlags.Any(f => f.FlagType == "Avoid"))
+            .Select(r => r.InciName)
+            .ToList();
+
+        // For now IngredientAnalysisService passes an empty list.
+        // Later, if the user opts into personalised summaries, this line will include
+        // selected skin concerns such as Rosacea or AtopicDermatitis.
+        var conditionsLine = userConditions.Any()
+            ? $"User's skin concerns: {string.Join(", ", userConditions)}."
+            : "No specific skin profile was provided.";
+
+        // The system message is the safety instruction.
+        // It tells the model to treat database-backed facts and AI-classified
+        // unknown ingredients differently. Most importantly, the model must use
+        // the confidence wording we already chose in C# without making it stronger.
+        var systemMessage =
+            "You are a cosmetic ingredient assistant. Using ONLY the analysis data the user gives you, " +
+            "write a short 2-3 sentence product summary for a general audience. " +
+            "Do not infer the product type, such as sunscreen, cleanser, or fragrance-based formula, unless the data explicitly says so. " +
+            "Known ingredients come from a curated database and can be described with more confidence. " +
+            "Ingredients marked 'not found in database' come from a general AI classifier; they are estimates, not verified facts. " +
+            "For those ingredients, a confidence wording is already provided, for example 'low confidence'. " +
+            "Use that wording exactly as given and do not make the ingredient sound more or less certain than that wording. " +
+            "If any unknown ingredients are provided, always mention them briefly, including that they were not found in the database and that the AI classifier result is unverified. " +
+            "Use cautious language such as 'may', 'is commonly used for', or 'based on the ingredient list'. " +
+            "Never claim the product is safe and never give medical advice. " +
+            "Do not invent any ingredient, effect, or fact that is not in the data.";
+
+        // The user message contains the facts for this product.
+        // Notice the wording: we are not asking the model to analyse from scratch.
+        // We are giving it our analysis and asking it to turn that into readable text.
+        var userMessage =
+            $"Known ingredients (from database): {(known.Any() ? string.Join(", ", known) : "none")}.\n" +
+            $"Unknown ingredients (AI-classified): {(unknown.Any() ? string.Join("; ", unknown) : "none")}.\n" +
+            $"Potential concerns (Avoid flags): {(concerns.Any() ? string.Join(", ", concerns) : "none")}.\n" +
+            $"{conditionsLine}";
+
+        return (systemMessage, userMessage);
+    }
+
+    private static string BuildFallbackSummary(AnalyseResponse results)
+    {
+        // This fallback is deterministic: it uses only our backend's own results.
+        // No AI model is involved here, so it is always available.
+        var known = results.Results.Count;
+        var unknown = results.UnknownIngredients.Count;
+        var total = known + unknown;
+
+        var concerns = results.Results
+            .Where(r => r.ConditionFlags.Any(f => f.FlagType == "Avoid"))
+            .Select(r => r.InciName)
+            .ToList();
+
+        var summary =
+            $"This product contains {total} ingredient(s): " +
+            $"{known} found in the database, {unknown} not recognised. ";
+
+        summary += concerns.Any()
+            ? $"Potential concerns based on the ingredient list: {string.Join(", ", concerns)}. "
+            : "No specific concerns were identified in the known ingredients. ";
+
+        summary += "This is a preliminary assessment based on available data.";
+
+        return summary;
+    }
+}
