@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using SafeBeauty.API.Data;
 using SafeBeauty.API.DTOs;
+using SafeBeauty.API.Models.Enums;
 
 namespace SafeBeauty.API.Services;
 
@@ -19,9 +20,21 @@ public class IngredientAnalysisService
         _aiSummary = aiSummary;
     }
 
-    public async Task<AnalyseResponse> AnalyseAsync(List<string> ingredients)
+    public async Task<AnalyseResponse> AnalyseAsync(List<string> ingredients, List<string>? userConditions = null)
     {
         var response = new AnalyseResponse();
+
+        // Convert frontend condition strings into the backend enum values.
+        // Unknown strings are ignored, so an old localStorage value cannot break
+        // the whole analysis request.
+        var selectedConditions = (userConditions ?? new List<string>())
+            .Select(c => Enum.TryParse<Condition>(c, out var condition)
+                ? condition
+                : (Condition?)null)
+            .Where(c => c.HasValue)
+            .Select(c => c!.Value)
+            .ToHashSet();
+
         foreach (var name in ingredients)
         {
             var cleanedName = name.Trim().ToUpper();
@@ -47,7 +60,13 @@ public class IngredientAnalysisService
                 // Category = ingredient.Category != null ? ingredient.Category.Name : string.Empty
                 Category = ingredient.Category?.Name ?? string.Empty, 
                 Function = ingredient.Function,
-                ConditionFlags = ingredient.Category?.ConditionRules.Select(cr => new ConditionFlagDto
+                // Personalisation happens here.
+                // If the user did not select any conditions, this returns an
+                // empty list. If they selected conditions, only matching rules
+                // are shown.
+                ConditionFlags = ingredient.Category?.ConditionRules
+                .Where(cr => selectedConditions.Contains(cr.Condition))
+                .Select(cr => new ConditionFlagDto
                 {
                     Condition = cr.Condition.ToString(),
                     FlagType = cr.FlagType.ToString(),
@@ -57,7 +76,7 @@ public class IngredientAnalysisService
             };
             response.Results.Add(result);
         }
-        response.AiSummary = await _aiSummary.SummariseAsync(response, new List<string>());
+        response.AiSummary = await _aiSummary.SummariseAsync(response, userConditions ?? new List<string>());
         return response;
         
     }

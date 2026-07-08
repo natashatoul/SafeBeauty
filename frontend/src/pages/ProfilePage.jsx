@@ -19,7 +19,8 @@ const CONDITIONS = [
   { value: 'Psoriasis', label: 'Psoriasis' },
   { value: 'Alopecia', label: 'Hair Loss (Alopecia)' },
   { value: 'SeborrhoeicDermatitis', label: 'Seborrhoeic Dermatitis (Dandruff)' },
-  { value: 'KeratosisPilaris', label: 'Keratosis Pilaris ("Chicken Skin")' }
+  { value: 'KeratosisPilaris', label: 'Keratosis Pilaris ("Chicken Skin")' },
+  { value: 'ActinicKeratoses', label: 'Actinic Keratoses' }
 ]
 
 function ProfilePage() {

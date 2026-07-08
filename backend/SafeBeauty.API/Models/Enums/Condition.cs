@@ -8,5 +8,6 @@ public enum Condition
     Alopecia,
     AtopicDermatitis,
     SeborrhoeicDermatitis,
-    KeratosisPilaris
+    KeratosisPilaris,
+    ActinicKeratoses
 }

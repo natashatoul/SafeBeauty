@@ -179,8 +179,15 @@ public class AiSummaryService
         // Known ingredients are already analysed by our deterministic backend.
         // We include only the fields the model is allowed to explain.
         var known = results.Results
-            .Select(r => $"{r.InciName} ({r.SafetyRating}, {r.Category})")
-            .ToList();
+    .Select(r =>
+    {
+        var functionText = string.IsNullOrWhiteSpace(r.Function)
+            ? "function not available"
+            : r.Function;
+
+        return $"{r.InciName} ({r.SafetyRating}, {r.Category}, function: {functionText})";
+    })
+    .ToList();
 
         // Unknown ingredients are not in the database, so their label comes from
         // the existing zero-shot classifier. The confidence WORD is chosen here
@@ -219,17 +226,29 @@ public class AiSummaryService
         // unknown ingredients differently. Most importantly, the model must use
         // the confidence wording we already chose in C# without making it stronger.
         var systemMessage =
-            "You are a cosmetic ingredient assistant. Using ONLY the analysis data the user gives you, " +
-            "write a short 2-3 sentence product summary for a general audience. " +
-            "Do not infer the product type, such as sunscreen, cleanser, or fragrance-based formula, unless the data explicitly says so. " +
-            "Known ingredients come from a curated database and can be described with more confidence. " +
-            "Ingredients marked 'not found in database' come from a general AI classifier; they are estimates, not verified facts. " +
-            "For those ingredients, a confidence wording is already provided, for example 'low confidence'. " +
-            "Use that wording exactly as given and do not make the ingredient sound more or less certain than that wording. " +
-            "If any unknown ingredients are provided, always mention them briefly, including that they were not found in the database and that the AI classifier result is unverified. " +
-            "Use cautious language such as 'may', 'is commonly used for', or 'based on the ingredient list'. " +
-            "Never claim the product is safe and never give medical advice. " +
-            "Do not invent any ingredient, effect, or fact that is not in the data.";
+    "You are a cosmetic ingredient assistant. Using ONLY the analysis data the user gives you, " +
+    "write a short 2-3 sentence product summary for a general audience. " +
+
+    "This is cosmetic ingredient information, not medical advice. " +
+    "Do not claim that the product treats, heals, soothes, calms, alleviates, prevents, cures, improves, or manages any medical condition or symptoms. " +
+    "Do not say that the product is suitable for atopic dermatitis, eczema, psoriasis, rosacea, acne, alopecia, seborrhoeic dermatitis, or any other condition. " +
+    "Do not recommend the product for a medical or skin condition. " +
+
+    "You may describe ingredient functions only as cosmetic functions, for example hydration, humectant effect, smoothing, cleansing, preservative, fragrance, or exfoliation. " +
+    "Use cautious wording such as 'contains ingredients commonly used for', 'is flagged as a potential concern', 'may be relevant for cosmetic hydration', or 'has mixed relevance for the selected profile'. " +
+
+    "If any Avoid flags are present, clearly mention that the product has mixed relevance for the selected profile. " +
+    "If a fragrance or parfum ingredient is flagged, mention it as a potential concern for the selected profile. " +
+
+    "Do not infer the product type, such as sunscreen, cleanser, or fragrance-based formula, unless the data explicitly says so. " +
+    "Known ingredients come from a curated database and can be described with more confidence. " +
+    "Ingredients marked 'not found in database' come from a general AI classifier; they are estimates, not verified facts. " +
+    "For those ingredients, a confidence wording is already provided, for example 'low confidence'. " +
+    "Use that wording exactly as given and do not make the ingredient sound more or less certain than that wording. " +
+    "If any unknown ingredients are provided, always mention them briefly, including that they were not found in the database and that the AI classifier result is unverified. " +
+
+    "Never claim the product is safe, effective, or suitable for a condition. " +
+    "Do not invent any ingredient, effect, or fact that is not in the data.";
 
         // The user message contains the facts for this product.
         // Notice the wording: we are not asking the model to analyse from scratch.

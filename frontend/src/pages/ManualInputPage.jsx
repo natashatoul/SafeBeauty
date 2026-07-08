@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { analyseIngredients } from '../services/ingredientService'
+import { useProfile } from '../context/ProfileContext'
 
 function ManualInputPage() {
   // HOOK: useState('')
@@ -22,6 +23,10 @@ function ManualInputPage() {
   // without a full page reload.
   const navigate = useNavigate()
 
+  // Read the locally saved profile so selected conditions can personalise
+  // backend condition flags.
+  const { profile } = useProfile()
+
   // This function runs when the user clicks the "Analyse" button.
   // It's async because it needs to wait for a network request to finish.
   const handleAnalyse = async () => {
@@ -38,7 +43,7 @@ function ManualInputPage() {
     try {
       // Call the service function and WAIT (await) for the result.
       // This is likely a network request to a server or API.
-      const results = await analyseIngredients(ingredients)
+      const results = await analyseIngredients(ingredients, profile.conditions ?? [])
 
       // Move to the "/results" route, carrying the results data along.
       // { state: { results } } attaches this data to the navigation —

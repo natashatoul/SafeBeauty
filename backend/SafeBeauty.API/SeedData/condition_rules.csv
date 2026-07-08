@@ -1,44 +1,67 @@
 condition,ingredient_category,flag_type,evidence_source,notes
-Rosacea,Fragrance,Avoid,AAD / dermatological consensus,Common trigger for rosacea flares
+Rosacea,Fragrance,Avoid,BAD Patient Hub - Rosacea,Perfumed soap can make rosacea worse
 Rosacea,Essential Oils,Caution,AAD,Can cause irritation and flushing
 Rosacea,Alcohol,Avoid,AAD / BAD,Drying and vasodilating - worsens redness
 Rosacea,Menthol,Avoid,AAD,Cooling agents trigger flushing
 Rosacea,Sulfates,Caution,dermatological consensus,Can disrupt skin barrier
-Rosacea,UV Filters,Beneficial,BAD,Daily SPF 30+ strongly recommended
+Rosacea,UV Filters,Beneficial,BAD Patient Hub - Rosacea,Sun block with SPF of at least 30 should be applied every day
 Rosacea,Humectants,Beneficial,dermatological consensus,Maintains moisture without irritation
+Rosacea,Emollients,Beneficial,BAD Patient Hub - Rosacea,Soap substitute emollient and non-perfumed moisturiser are recommended for dry or sensitive skin
 Rosacea,Niacinamide,Beneficial,PubMed - Draelos 2019,Anti-inflammatory reduces redness
 Rosacea,Ceramides,Beneficial,dermatological consensus,Barrier repair reduces sensitivity
 Atopic Dermatitis,Fragrance,Avoid,NEA - National Eczema Association,Top irritant for eczema
-Atopic Dermatitis,Sulfates,Avoid,NEA,Disrupts skin barrier
+Atopic Dermatitis,Sulfates,Avoid,BAD Patient Hub - Atopic eczema,Guidance advises avoiding soaps shower gels detergents and bubble baths
 Atopic Dermatitis,Preservatives,Caution,NEA,MI/MCI and formaldehyde releasers are sensitisers
-Atopic Dermatitis,Essential Oils,Caution,NEA,Can cause allergic reaction
+Atopic Dermatitis,Essential Oils,Caution,BAD Patient Hub - Atopic eczema,Natural or herbal creams can cause allergic reactions or skin irritation
 Atopic Dermatitis,Lanolin,Caution,dermatological consensus,Can cause allergy in sensitised individuals
 Atopic Dermatitis,Ceramides,Beneficial,NEA / BAD,Restores skin barrier - first line recommendation
-Atopic Dermatitis,Humectants,Beneficial,NEA / BAD,Glycerin and hyaluronic acid retain moisture
+Atopic Dermatitis,Humectants,Beneficial,BAD Patient Hub - Atopic eczema,Moisturising helps reduce dryness itching and irritation
 Atopic Dermatitis,Colloidal Oatmeal,Beneficial,NEA,Clinically proven to soothe eczema
-Atopic Dermatitis,Emollients,Beneficial,BAD,Core of eczema management
+Atopic Dermatitis,Emollients,Beneficial,BAD Patient Hub - Atopic eczema,Moisturisers and emollients are described as one of the most important parts of eczema care
+Atopic Dermatitis,Antiseptics,Caution,BAD Patient Hub - Atopic eczema,Antiseptics can irritate or dry the skin if used incorrectly or continuously
 Psoriasis,Fragrance,Avoid,dermatological consensus,Can trigger flares
 Psoriasis,Alcohol,Avoid,dermatological consensus,Drying and irritating on plaques
 Psoriasis,Sulfates,Caution,dermatological consensus,Can irritate psoriatic skin
 Psoriasis,Keratolytics,Beneficial,BAD / dermatological consensus,Salicylic acid removes scale
 Psoriasis,Humectants,Beneficial,BAD,Urea and glycerin soften plaques
-Psoriasis,Emollients,Beneficial,BAD,Reduces dryness and cracking
+Psoriasis,Emollients,Beneficial,BAD Patient Hub - Psoriasis,Keeping skin well moisturized helps prevent dryness and cracking
 Psoriasis,Coal Tar,Beneficial,BAD,Traditional treatment for psoriasis
-Alopecia,Hair Growth Actives,Beneficial,AAD,Caffeine minoxidil biotin support hair growth
+Alopecia,Hair Growth Actives,Beneficial,BAD Patient Hub - Alopecia areata,Minoxidil lotion may sometimes help boost regrowth when used alongside other treatments
+Alopecia,UV Filters,Beneficial,BAD Patient Hub - Alopecia areata,Bald patches should be protected with sun block or a hat to prevent sunburn and long-term sun damage
 Alopecia,Alcohol,Caution,dermatological consensus,Can dry scalp and worsen irritation
 Alopecia,Sulfates,Caution,dermatological consensus,Can damage hair follicles with overuse
 Alopecia,Silicones,Caution,dermatological consensus,Can build up and block follicles
-Acne,Comedogenic Ingredients,Avoid,AAD,Block pores and worsen acne
-Acne,Heavy Oils,Avoid,AAD,Isopropyl myristate coconut oil are comedogenic
-Acne,Keratolytics,Beneficial,AAD,Salicylic acid unclogs pores
-Acne,Niacinamide,Beneficial,PubMed,Reduces sebum and inflammation
-Acne,Retinoids,Beneficial,AAD,Increases cell turnover prevents clogging
+Acne,Comedogenic Ingredients,Avoid,BAD Patient Hub - Acne,Skincare products suitable for blemish-prone skin should be non-comedogenic or oil-free
+Acne,Heavy Oils,Avoid,BAD Patient Hub - Acne,Oily skincare products greasy moisturisers and hair products can cause or worsen acne
+Acne,Keratolytics,Beneficial,BAD Patient Hub - Acne,Ingredients such as salicylic acid or benzoyl peroxide can be helpful for mild acne
+Acne,Niacinamide,Beneficial,BAD Patient Hub - Acne,Nicotinamide also known as niacinamide is listed as an active topical acne treatment
+Acne,Retinoids,Beneficial,BAD Patient Hub - Acne,Topical retinoids such as tretinoin isotretinoin and adapalene are listed as active acne treatments
 Seborrhoeic Dermatitis,Fragrance,Avoid,BAD / dermatological consensus,Irritates sensitive scalp and triggers flares
 Seborrhoeic Dermatitis,Heavy Oils,Avoid,dermatological consensus,Feeds Malassezia fungus and worsens condition
-Seborrhoeic Dermatitis,Sulfates,Caution,dermatological consensus,Can over-strip scalp and worsen irritation
-Seborrhoeic Dermatitis,Antifungal Agents,Beneficial,BAD,Zinc pyrithione ketoconazole target Malassezia fungus
-Seborrhoeic Dermatitis,Keratolytics,Beneficial,BAD / dermatological consensus,Salicylic acid removes scale and unclogs follicles
+Seborrhoeic Dermatitis,Sulfates,Caution,BAD Patient Hub - Seborrhoeic dermatitis,Gentle soap-free wash is recommended for affected skin
+Seborrhoeic Dermatitis,Antifungal Agents,Beneficial,BAD Patient Hub - Seborrhoeic dermatitis,Antifungal creams and shampoos reduce yeast on the skin and can be used long term
+Seborrhoeic Dermatitis,Keratolytics,Beneficial,BAD Patient Hub - Seborrhoeic dermatitis,Salicylic acid treatments can help remove thick scale especially on the scalp
+Seborrhoeic Dermatitis,Emollients,Beneficial,BAD Patient Hub - Seborrhoeic dermatitis,Light moisturiser can help support the skin barrier after washing
+Seborrhoeic Dermatitis,Comedogenic Ingredients,Avoid,BAD Patient Hub - Seborrhoeic dermatitis,Non-comedogenic makeup is recommended because it does not block pores
 Keratosis Pilaris,Keratolytics,Beneficial,AAD / dermatological consensus,AHAs BHAs and urea dissolve keratin plugs in follicles
 Keratosis Pilaris,Humectants,Beneficial,dermatological consensus,Moisturise rough dry skin and soften bumps
 Keratosis Pilaris,Heavy Oils,Caution,dermatological consensus,Can clog follicles and worsen plugging
 Keratosis Pilaris,Fragrance,Caution,dermatological consensus,Skin is often sensitive and reactive to fragrance
+Actinic Keratoses,UV Filters,Beneficial,BAD Patient Hub - Actinic keratoses,High protection sunscreen of at least SPF 30 with high UVA protection is recommended
+Actinic Keratoses,Emollients,Beneficial,BAD Patient Hub - Actinic keratoses,Moisturisers can be used for scaly patches
+Capillaritis,Alcohol,Caution,BAD Patient Hub - Capillaritis,Alcohol is listed as one of the factors that can be linked to capillaritis
+Chronic Actinic Dermatitis,UV Filters,Beneficial,BAD Patient Hub - Chronic actinic dermatitis,High factor broad spectrum non-fragranced sunscreen is recommended for exposed skin
+Chronic Actinic Dermatitis,Fragrance,Avoid,BAD Patient Hub - Chronic actinic dermatitis,Guidance recommends non-fragranced sunscreen and fragrance-free soap substitute
+Chronic Actinic Dermatitis,Emollients,Beneficial,BAD Patient Hub - Chronic actinic dermatitis,Moisturisers are used to treat dry skin
+Discoid Eczema,Emollients,Beneficial,BAD Patient Hub - Discoid eczema,Emollient moisturising cream or ointment is usually helpful and recommended long term for dry scaly skin
+Discoid Eczema,Sulfates,Avoid,BAD Patient Hub - Discoid eczema,Guidance recommends avoiding skin irritants such as detergents and using an emollient instead of soap
+Eczema Herpeticum,Keratolytics,Caution,BAD Patient Hub - Eczema herpeticum,Skin peels are listed as cosmetic procedures that can trigger eczema herpeticum
+Male Pattern Hair Loss,Hair Growth Actives,Beneficial,BAD Patient Hub - Male pattern hair loss,Topical 5 percent minoxidil liquid or foam may slow hair loss progression and acts as a hair growth stimulant
+Male Pattern Hair Loss,UV Filters,Beneficial,BAD Patient Hub - Male pattern hair loss,Bald scalp areas should be protected with sun block to prevent sunburn and long-term sun damage
+Female Pattern Hair Loss,Hair Growth Actives,Beneficial,BAD Patient Hub - Female pattern hair loss,Topical 2 or 5 percent minoxidil solution may slow progression and partially restore hair in some women
+Female Pattern Hair Loss,UV Filters,Beneficial,BAD Patient Hub - Female pattern hair loss,Bald scalp areas should be protected with sun block to prevent sunburn and long-term sun damage
+Hand Dermatitis,Sulfates,Avoid,BAD Patient Hub - Hand dermatitis,Repeated contact with soaps detergents and water can cause irritant contact dermatitis
+Hand Dermatitis,Fragrance,Avoid,BAD Patient Hub - Hand dermatitis,Skin contact with allergens such as perfumes can cause allergic contact dermatitis
+Hand Dermatitis,Emollients,Beneficial,BAD Patient Hub - Hand dermatitis,Moisturisers and emollients are an essential part of treatment and can be used as soap substitutes
+Traction Alopecia,Hair Growth Actives,Beneficial,BAD Patient Hub - Traction alopecia,Topical 2 or 5 percent minoxidil solution or foam may stimulate hair growth after traction is stopped
+Traction Alopecia,UV Filters,Beneficial,BAD Patient Hub - Traction alopecia,Bald scalp areas should be protected with sun block to prevent sunburn and long-term sun damage
