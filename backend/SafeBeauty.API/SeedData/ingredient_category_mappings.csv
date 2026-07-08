@@ -1,0 +1,22 @@
+inci_name,ingredient_category,mapping_type,source,notes
+GLYCERIN,Humectants,CosIngFunction,CosIng Function = HUMECTANT,Moisture-retaining ingredient
+HYALURONIC ACID,Humectants,CosIngFunction,CosIng Function = HUMECTANT,Moisture-binding ingredient
+UREA,Humectants,CosIngFunction,CosIng Function = HUMECTANT,Humectant whose effect depends on formulation and concentration
+UREA,Keratolytics,ManualDerived,Dermatology application mapping,Keratolytic effect depends on formulation and concentration
+PETROLATUM,Emollients,CosIngFunction,CosIng Function = EMOLLIENT,Barrier-supporting occlusive ingredient
+DIMETHICONE,Emollients,CosIngFunction,CosIng Function = EMOLLIENT,Skin-conditioning emollient
+CERAMIDE NP,Ceramides,ExactIngredient,Exact INCI family mapping,Ceramide skin-barrier lipid
+CERAMIDE AP,Ceramides,ExactIngredient,Exact INCI family mapping,Ceramide skin-barrier lipid
+CERAMIDE EOP,Ceramides,ExactIngredient,Exact INCI family mapping,Ceramide skin-barrier lipid
+NIACINAMIDE,Niacinamide,ExactIngredient,Exact INCI mapping,Direct match to the application category
+SALICYLIC ACID,Keratolytics,ManualDerived,Dermatology application mapping,Keratolytic ingredient
+SODIUM LAURYL SULFATE,Sodium Lauryl Sulfate,ExactIngredient,AAD - Rosacea skin care tips,Exact irritant named by AAD guidance
+ALCOHOL DENAT.,Alcohol,ManualDerived,INCI alcohol family mapping,Denatured alcohol
+MENTHOL,Menthol,ExactIngredient,Exact INCI mapping,Direct match to the application category
+LANOLIN,Lanolin,ExactIngredient,Exact INCI mapping,Direct match to the application category
+METHYLISOTHIAZOLINONE,Isothiazolinone Preservatives,ExactIngredient,European Commission SCCS,MI preservative with documented skin-sensitising potential
+METHYLCHLOROISOTHIAZOLINONE,Isothiazolinone Preservatives,ExactIngredient,European Commission SCCS,MCI preservative associated with contact allergy
+COLLOIDAL OATMEAL,Colloidal Oatmeal,ExactIngredient,CosIng Inventory,Exact INCI with SKIN PROTECTING function
+CLIMBAZOLE,Anti-seborrhoeic Agents,CosIngFunction,CosIng Function = ANTI-SEBORRHEIC,Exact active CosIng ingredient
+PIROCTONE OLAMINE,Anti-seborrhoeic Agents,CosIngFunction,CosIng anti-dandruff/restriction data,Ingredient used in dandruff-focused cosmetic care
+SELENIUM SULFIDE,Anti-seborrhoeic Agents,CosIngFunction,CosIng Function = ANTI-SEBORRHEIC,Exact active CosIng ingredient

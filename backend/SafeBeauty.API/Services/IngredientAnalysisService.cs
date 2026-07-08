@@ -40,7 +40,8 @@ public class IngredientAnalysisService
             var cleanedName = name.Trim().ToUpper();
 
             var ingredient = await _context.Ingredients
-            .Include(i => i.Category)
+            .Include(i => i.CategoryMappings)
+            .ThenInclude(m => m.Category)
             .ThenInclude(c => c.ConditionRules)
             .FirstOrDefaultAsync(i => i.InciName == cleanedName);
 
@@ -55,24 +56,26 @@ public class IngredientAnalysisService
             {
                 InciName = ingredient.InciName,
                 SafetyRating = ingredient.SafetyRating.ToString(),
-                // ?. (null-conditional operator) if categori is null return null (not program fail) if nor null - take name
-                // ?? (null-coalescing operator)
-                // Category = ingredient.Category != null ? ingredient.Category.Name : string.Empty
-                Category = ingredient.Category?.Name ?? string.Empty, 
+                Category = string.Join(", ", ingredient.CategoryMappings
+                    .Select(m => m.Category.Name)
+                    .OrderBy(name => name)),
                 Function = ingredient.Function,
                 // Personalisation happens here.
                 // If the user did not select any conditions, this returns an
                 // empty list. If they selected conditions, only matching rules
                 // are shown.
-                ConditionFlags = ingredient.Category?.ConditionRules
-                .Where(cr => selectedConditions.Contains(cr.Condition))
-                .Select(cr => new ConditionFlagDto
-                {
-                    Condition = cr.Condition.ToString(),
-                    FlagType = cr.FlagType.ToString(),
-                    Notes = cr.Notes,
-                    EvidenceSource = cr.EvidenceSource
-                }).ToList() ?? new()  
+                ConditionFlags = ingredient.CategoryMappings
+                    .SelectMany(m => m.Category.ConditionRules)
+                    .Where(cr => selectedConditions.Contains(cr.Condition))
+                    .GroupBy(cr => cr.Id)
+                    .Select(group => group.First())
+                    .Select(cr => new ConditionFlagDto
+                    {
+                        Condition = cr.Condition.ToString(),
+                        FlagType = cr.FlagType.ToString(),
+                        Notes = cr.Notes,
+                        EvidenceSource = cr.EvidenceSource
+                    }).ToList()
             };
             response.Results.Add(result);
         }

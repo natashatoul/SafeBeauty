@@ -8,11 +8,10 @@ public class Ingredient
     public string InciName { get; set; } = string.Empty;
     public string? CasNumber { get; set; } = string.Empty;
     public string Function { get; set; } = string.Empty;
-    public int CategoryId { get; set; }
     public SafetyRating SafetyRating {get; set;} 
     public string Source { get; set; } = string.Empty;
 
-    public IngredientCategory Category {get; set;} = null!;
+    public ICollection<IngredientCategoryMapping> CategoryMappings { get; set; } = new List<IngredientCategoryMapping>();
     public ICollection<IngredientSynonym> Synonyms {get; set;} = new List<IngredientSynonym>();
     public ICollection<AnnexRestriction> AnnexRestrictions {get; set;} = new List<AnnexRestriction>();
 

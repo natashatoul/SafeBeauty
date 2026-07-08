@@ -6,6 +6,6 @@ public class IngredientCategory
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
 
-    public ICollection<Ingredient> Ingredients { get; set; } = new List<Ingredient>();
+    public ICollection<IngredientCategoryMapping> IngredientMappings { get; set; } = new List<IngredientCategoryMapping>();
     public ICollection<ConditionRule> ConditionRules { get; set; } = new List<ConditionRule>();
 }

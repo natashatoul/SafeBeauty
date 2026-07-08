@@ -11,7 +11,7 @@ function IngredientCard({ ingredient }) { // it is a component and it is like cu
     const color = borderColor[ingredient.safetyRating] || '#9e9e9e';
 
     return (
-        <div style={{ borderLeft: `4px solid ${color}`, padding: '10px', marginBottom: '10px' }}>
+        <div style={{ borderLeft: `4px solid ${color}`, padding: '5px', marginBottom: '10px', paddingLeft: '20px' }}>
             <strong>{ingredient.inciName}</strong>
             <span> — {ingredient.safetyRating}</span>
             {ingredient.function && <p>Function: {ingredient.function}</p>}

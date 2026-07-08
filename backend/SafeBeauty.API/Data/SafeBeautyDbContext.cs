@@ -11,6 +11,7 @@ public class SafeBeautyDbContext : DbContext
 
     public DbSet<Ingredient> Ingredients { get; set; }
     public DbSet<IngredientCategory> IngredientCategories { get; set; }
+    public DbSet<IngredientCategoryMapping> IngredientCategoryMappings { get; set; }
     public DbSet<IngredientSynonym> IngredientSynonyms { get; set; }
     public DbSet<AnnexRestriction> AnnexRestrictions { get; set; }
     public DbSet<ConditionRule> ConditionRules { get; set; }
@@ -19,10 +20,18 @@ public class SafeBeautyDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Ingredient>()
-            .HasOne(i => i.Category)
-            .WithMany(c => c.Ingredients)
-            .HasForeignKey(i => i.CategoryId);
+        modelBuilder.Entity<IngredientCategoryMapping>()
+            .HasKey(m => new { m.IngredientId, m.CategoryId });
+
+        modelBuilder.Entity<IngredientCategoryMapping>()
+            .HasOne(m => m.Ingredient)
+            .WithMany(i => i.CategoryMappings)
+            .HasForeignKey(m => m.IngredientId);
+
+        modelBuilder.Entity<IngredientCategoryMapping>()
+            .HasOne(m => m.Category)
+            .WithMany(c => c.IngredientMappings)
+            .HasForeignKey(m => m.CategoryId);
 
         modelBuilder.Entity<ConditionRule>()
             .HasOne(cr => cr.Category)

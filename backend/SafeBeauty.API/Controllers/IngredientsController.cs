@@ -29,7 +29,7 @@ namespace SafeBeauty.API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<IngredientDto>>> GetIngredients([FromQuery] string? search)
         {
-            var query = _context.Ingredients.Include(i => i.Category).AsQueryable();
+            var query = _context.Ingredients.AsQueryable();
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(i => i.InciName.Contains(search.ToUpper()));
 
@@ -41,15 +41,14 @@ namespace SafeBeauty.API.Controllers
                     InciName = i.InciName,
                     CasNumber = i.CasNumber,
                     Function = i.Function,
-                    CategoryId = i.CategoryId,
                     SafetyRating = i.SafetyRating.ToString(),
                     Source = i.Source,
-                    Category = new IngredientCategoryDto
+                    Categories = i.CategoryMappings.Select(m => new IngredientCategoryDto
                     {
-                        Id = i.Category.Id,
-                        Name = i.Category.Name,
-                        Description = i.Category.Description
-                    }
+                        Id = m.Category.Id,
+                        Name = m.Category.Name,
+                        Description = m.Category.Description
+                    }).ToList()
                 })
                 .ToListAsync();
         }
@@ -59,7 +58,6 @@ namespace SafeBeauty.API.Controllers
         public async Task<ActionResult<IngredientDto>> GetIngredient(int id)
         {
             var ingredient = await _context.Ingredients
-                .Include(i => i.Category)
                 .Where(i => i.Id == id)
                 .Select(i => new IngredientDto
                 {
@@ -67,15 +65,14 @@ namespace SafeBeauty.API.Controllers
                     InciName = i.InciName,
                     CasNumber = i.CasNumber,
                     Function = i.Function,
-                    CategoryId = i.CategoryId,
                     SafetyRating = i.SafetyRating.ToString(),
                     Source = i.Source,
-                    Category = new IngredientCategoryDto
+                    Categories = i.CategoryMappings.Select(m => new IngredientCategoryDto
                     {
-                        Id = i.Category.Id,
-                        Name = i.Category.Name,
-                        Description = i.Category.Description
-                    }
+                        Id = m.Category.Id,
+                        Name = m.Category.Name,
+                        Description = m.Category.Description
+                    }).ToList()
                 })
                 .FirstOrDefaultAsync();
 

@@ -8,6 +8,22 @@ import IngredientCard from '../components/IngredientCard'
 // replaces the inline <div> that used to be written directly in the map() below.
 import UnknownIngredientCard from '../components/UnknownIngredientCard'
 
+// The order in which safety-rating sections appear on the page.
+// Red first (prohibited — most important), then Amber (caution),
+// then Green (regulator-approved), then Grey (no regulatory data).
+// This array drives BOTH the order and the section titles below,
+// so changing the order here changes the whole page — one place to edit.
+const RATING_ORDER = ['Red', 'Amber', 'Green', 'Grey']
+
+// Human-readable titles shown as the heading of each section.
+// Keys match the safetyRating strings that come back from the API.
+const RATING_TITLES = {
+  Red: 'Red — avoid',
+  Amber: 'Amber — caution',
+  Green: 'Green — regulator-approved',
+  Grey: 'Grey — no regulatory rating'
+}
+
 function ResultsPage() {
   // HOOK: useLocation()
   // This hook reads information about the current "page" (route) the user is on.
@@ -39,6 +55,27 @@ function ResultsPage() {
     )
   }
 
+  // GROUPING STEP
+  // Before rendering, we sort the flat list of ingredients into buckets
+  // keyed by their safetyRating. This is what turns the plain list into
+  // colour-grouped sections.
+  //
+  // We start with an empty bucket for every known rating so the order is
+  // guaranteed and predictable:  { Red: [], Amber: [], Green: [], Grey: [] }
+  const grouped = { Red: [], Amber: [], Green: [], Grey: [] }
+
+  // Loop over every analysed ingredient and drop it into the right bucket.
+  results.results.forEach((item) => {
+    // If the rating is one we know about, push into that bucket.
+    // If somehow an unexpected rating arrives, fall back to Grey so
+    // nothing silently disappears from the page.
+    if (grouped[item.safetyRating]) {
+      grouped[item.safetyRating].push(item)
+    } else {
+      grouped.Grey.push(item)
+    }
+  })
+
   return (
     <div>
       <h2>Analysis Results</h2>
@@ -49,14 +86,35 @@ function ResultsPage() {
         </div>  
       )}
 
-      {/* .map() loops through each analyzed ingredient in results.results.
-          Each one is rendered by IngredientCard, which handles its own
-          layout, border color, and conditional fields (function, category, flags) —
-          this used to be written out inline here, but that duplicated the
-          exact same markup already present in IngredientCard.jsx */}
-      {results.results.map((item, index) => (
-        <IngredientCard key={index} ingredient={item} />
-      ))}
+      {/* SECTION RENDERING
+          Instead of one flat .map() over all ingredients, we now loop over
+          RATING_ORDER (Red, Amber, Green, Grey). For each rating we take its
+          bucket from `grouped` and render a titled section — but only if that
+          bucket actually has ingredients in it (so empty colours don't show
+          an empty heading). */}
+      {RATING_ORDER.map((rating) => {
+        // Pull this rating's ingredients out of the grouped object.
+        const items = grouped[rating]
+
+        // If there are none of this colour, render nothing for this section.
+        // Returning null from inside .map() means "skip this one".
+        if (items.length === 0) return null
+
+        return (
+          <div key={rating} style={{marginBottom: '10px'}}>
+            {/* Section heading, e.g. "Amber — caution".
+                The count in brackets tells the user how many are in this group. */}
+            <h3>{RATING_TITLES[rating]} ({items.length})</h3>
+
+            {/* Now the familiar card loop, but only over THIS colour's items.
+                We build a stable key from the ingredient name plus its index
+                within this section, so React can track each card reliably. */}
+            {items.map((item, index) => (
+              <IngredientCard key={`${rating}-${item.inciName}-${index}`} ingredient={item} />
+            ))}
+          </div>
+        )
+      })}
 
       {/* Conditional rendering: only show this whole section if there's at least one unknown ingredient */}
       {results.unknownIngredients.length > 0 && (

@@ -239,6 +239,12 @@ public class AiSummaryService
 
     "If any Avoid flags are present, clearly mention that the product has mixed relevance for the selected profile. " +
     "If a fragrance or parfum ingredient is flagged, mention it as a potential concern for the selected profile. " +
+    "Only ingredients explicitly listed under 'Potential concerns (Avoid flags)' may be described as concerns for the selected profile. " +
+    "Never describe an individual ingredient as having 'mixed relevance' unless that ingredient is explicitly listed under 'Potential concerns (Avoid flags)'. " +
+    "The phrase 'mixed relevance for the selected profile' may describe the product as a whole only when at least one Avoid flag is present, and the reason must be an ingredient from that Avoid list. " +
+    "A SafetyRating or a regulatory category such as Amber, Restricted Substance, Preservative, or Keratolytic is not by itself evidence of irritation or incompatibility with sensitive skin. " +
+    "If you mention a restricted ingredient, say only that regulatory conditions or concentration limits may apply; do not turn that classification into a medical or personalised warning. " +
+    "Do not translate 'skin conditioning' or another listed function into hydration unless HUMECTANT or another explicit hydration-related function is present. " +
 
     "Do not infer the product type, such as sunscreen, cleanser, or fragrance-based formula, unless the data explicitly says so. " +
     "Known ingredients come from a curated database and can be described with more confidence. " +
