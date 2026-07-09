@@ -1,5 +1,7 @@
 using SafeBeauty.API.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using SafeBeauty.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +32,7 @@ builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
 //     builder.Services.AddDbContext<SafeBeautyDbContext>(options => options.UseSqlServer(connectionString));
 // }
 builder.Services.AddScoped<DataSeeder>();
+builder.Services.AddScoped<IngredientDeduplicationService>();
 builder.Services.AddHttpClient<HuggingFaceService>();
 builder.Services.AddHttpClient<AiSummaryService>();
 builder.Services.AddScoped<IngredientAnalysisService>();
@@ -56,7 +59,28 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SafeBeautyDbContext>();
-    await db.Database.MigrateAsync();
+    var migrator = db.GetService<IMigrator>();
+    const string normalizationMigration =
+        "20260709085218_AddNormalizedIngredientName";
+
+    var appliedMigrations = (await db.Database.GetAppliedMigrationsAsync())
+        .ToHashSet(StringComparer.Ordinal);
+
+    // On existing databases, stop after the column migration so historical
+    // duplicates can be merged before the unique index migration is applied.
+    if (!appliedMigrations.Contains(normalizationMigration))
+    {
+        await migrator.MigrateAsync(normalizationMigration);
+    }
+
+    var deduplicationService = scope.ServiceProvider
+        .GetRequiredService<IngredientDeduplicationService>();
+    await deduplicationService.RunAsync();
+
+    // Apply the unique-index migration and any later migrations only after the
+    // duplicate cleanup transaction has committed.
+    await migrator.MigrateAsync();
+
     var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
     await seeder.SeedAsync();
 }

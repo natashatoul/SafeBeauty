@@ -187,9 +187,9 @@ public class DataSeeder
         if (!File.Exists(filePath)) return;
 
         var existingNamesList = await _context.Ingredients
-            .Select(i => i.InciName)
+            .Select(i => i.NormalizedInciName)
             .ToListAsync();
-        var existingNames = new HashSet<string>(existingNamesList, StringComparer.OrdinalIgnoreCase);
+        var existingNames = new HashSet<string>(existingNamesList, StringComparer.Ordinal);
 
         var lines = await ReadCsvRecordsAsync(filePath);
         var pendingCount = 0;
@@ -203,12 +203,14 @@ public class DataSeeder
             // version. We store the normalised value because user input is also
             // normalised before lookup, so exact matching becomes more reliable.
             var inciName = parts[2].Trim();
-            if (string.IsNullOrWhiteSpace(inciName)) continue;
-            if (!existingNames.Add(inciName)) continue;
+            var normalizedName = IngredientNormalizer.Normalize(inciName);
+            if (normalizedName.Length == 0) continue;
+            if (!existingNames.Add(normalizedName)) continue;
 
             var ingredient = new Ingredient
             {
                 InciName = inciName,
+                NormalizedInciName = normalizedName,
                 SafetyRating = SafetyRating.Grey,
                 Function = string.Empty,
                 Source = source
@@ -266,13 +268,14 @@ public class DataSeeder
             if (parts.Length < 9) continue;
 
             var inciName = parts[1].Trim();
+            var normalizedName = IngredientNormalizer.Normalize(inciName);
             var function = parts[8].Trim();
 
-            if (string.IsNullOrWhiteSpace(inciName)) continue;
+            if (normalizedName.Length == 0) continue;
             if (string.IsNullOrWhiteSpace(function)) continue;
 
             var existing = await _context.Ingredients
-                .FirstOrDefaultAsync(i => i.InciName == inciName);
+                .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedName);
 
             if (existing == null) continue;
 
@@ -312,9 +315,10 @@ public class DataSeeder
 
         foreach (var name in genericNames)
         {
+            var normalizedName = IngredientNormalizer.Normalize(name);
             var existing = await _context.Ingredients
                 .Include(i => i.CategoryMappings)
-                .FirstOrDefaultAsync(i => i.InciName == name);
+                .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedName);
             if (existing != null)
             {
                 existing.SafetyRating = SafetyRating.Amber;
@@ -329,6 +333,7 @@ public class DataSeeder
                 var ingredient = new Ingredient
                 {
                     InciName = name,
+                    NormalizedInciName = normalizedName,
                     SafetyRating = SafetyRating.Amber,
                     Function = "Perfuming",
                     Source = "OfficialDerived_GenericFragranceTerm"
@@ -463,11 +468,11 @@ public class DataSeeder
             foreach (var name in names)
             {
                 if (string.IsNullOrWhiteSpace(name)) continue;
-                var normalizedName = name.ToUpperInvariant();
+                var normalizedName = IngredientNormalizer.Normalize(name);
 
                 var existing = await _context.Ingredients
                     .Include(i => i.CategoryMappings)
-                    .FirstOrDefaultAsync(i => i.InciName.ToUpper() == normalizedName);
+                    .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedName);
                 if (existing != null)
                 {
                     if (hasConditionalException)
@@ -501,6 +506,7 @@ public class DataSeeder
                     var ingredient = new Ingredient
                     {
                         InciName = name,
+                        NormalizedInciName = normalizedName,
                         CasNumber = string.IsNullOrWhiteSpace(casNumber) ? null : casNumber,
                         SafetyRating = rating,
                         Function = string.Empty,
@@ -558,10 +564,10 @@ public class DataSeeder
 
             foreach (var name in names)
             {
-                var normalizedName = name.ToUpperInvariant();
+                var normalizedName = IngredientNormalizer.Normalize(name);
                 var existing = await _context.Ingredients
                     .Include(i => i.CategoryMappings)
-                    .FirstOrDefaultAsync(i => i.InciName.ToUpper() == normalizedName);
+                    .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedName);
                 if (existing != null)
                 {
                     ApplyMoreRestrictiveRating(existing, rating, source);
@@ -578,6 +584,7 @@ public class DataSeeder
                     var ingredient = new Ingredient
                     {
                         InciName = name,
+                        NormalizedInciName = normalizedName,
                         CasNumber = string.IsNullOrWhiteSpace(casNumber) ? null : casNumber,
                         SafetyRating = rating,
                         Function = function,
@@ -678,8 +685,8 @@ public class DataSeeder
             .Where(parts => parts.Length >= 5)
             .ToList();
         var requestedNames = parsedRows
-            .Select(parts => parts[0].Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(parts => IngredientNormalizer.Normalize(parts[0]))
+            .Distinct(StringComparer.Ordinal)
             .ToList();
         var desiredPairs = parsedRows
             .Select(parts => $"{parts[0].Trim()}\u001F{parts[1].Trim()}")
@@ -704,16 +711,16 @@ public class DataSeeder
 
         var ingredientList = await _context.Ingredients
             .Include(i => i.CategoryMappings)
-            .Where(i => requestedNames.Contains(i.InciName))
+            .Where(i => requestedNames.Contains(i.NormalizedInciName))
             .ToListAsync();
         var ingredients = ingredientList
-            .GroupBy(i => i.InciName, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(i => i.NormalizedInciName, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(),
-                StringComparer.OrdinalIgnoreCase);
+                StringComparer.Ordinal);
 
         foreach (var parts in parsedRows)
         {
-            var inciName = parts[0].Trim();
+            var inciName = IngredientNormalizer.Normalize(parts[0]);
             var categoryName = parts[1].Trim();
             if (!ingredients.TryGetValue(inciName, out var ingredient)) continue;
             if (!categories.TryGetValue(categoryName, out var category)) continue;

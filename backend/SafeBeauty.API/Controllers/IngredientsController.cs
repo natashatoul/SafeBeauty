@@ -31,7 +31,11 @@ namespace SafeBeauty.API.Controllers
         {
             var query = _context.Ingredients.AsQueryable();
             if (!string.IsNullOrWhiteSpace(search))
-                query = query.Where(i => i.InciName.Contains(search.ToUpper()));
+            {
+                var normalizedSearch = IngredientNormalizer.Normalize(search);
+                query = query.Where(i =>
+                    i.NormalizedInciName.Contains(normalizedSearch));
+            }
 
             return await query
                 .Take(50)
@@ -94,6 +98,21 @@ namespace SafeBeauty.API.Controllers
                 return BadRequest();
             }
 
+            ingredient.NormalizedInciName =
+                IngredientNormalizer.Normalize(ingredient.InciName);
+            if (ingredient.NormalizedInciName.Length == 0)
+            {
+                return BadRequest("INCI name cannot be empty.");
+            }
+
+            var duplicateExists = await _context.Ingredients.AnyAsync(existing =>
+                existing.Id != id &&
+                existing.NormalizedInciName == ingredient.NormalizedInciName);
+            if (duplicateExists)
+            {
+                return Conflict("An ingredient with this normalized INCI name already exists.");
+            }
+
             _context.Entry(ingredient).State = EntityState.Modified;
 
             try
@@ -120,6 +139,19 @@ namespace SafeBeauty.API.Controllers
         [HttpPost]
         public async Task<ActionResult<Ingredient>> PostIngredient(Ingredient ingredient)
         {
+            ingredient.NormalizedInciName =
+                IngredientNormalizer.Normalize(ingredient.InciName);
+            if (ingredient.NormalizedInciName.Length == 0)
+            {
+                return BadRequest("INCI name cannot be empty.");
+            }
+
+            if (await _context.Ingredients.AnyAsync(existing =>
+                    existing.NormalizedInciName == ingredient.NormalizedInciName))
+            {
+                return Conflict("An ingredient with this normalized INCI name already exists.");
+            }
+
             _context.Ingredients.Add(ingredient);
             await _context.SaveChangesAsync();
 

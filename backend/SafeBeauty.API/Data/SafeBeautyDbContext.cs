@@ -20,6 +20,10 @@ public class SafeBeautyDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Ingredient>()
+            .HasIndex(i => i.NormalizedInciName)
+            .IsUnique();
+
         modelBuilder.Entity<IngredientCategoryMapping>()
             .HasKey(m => new { m.IngredientId, m.CategoryId });
 

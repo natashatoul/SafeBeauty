@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using SafeBeauty.API.Data;
 using SafeBeauty.API.DTOs;
+using SafeBeauty.API.Models;
 using SafeBeauty.API.Models.Enums;
 
 namespace SafeBeauty.API.Services;
@@ -35,15 +36,19 @@ public class IngredientAnalysisService
             .Select(c => c!.Value)
             .ToHashSet();
 
-        foreach (var name in ingredients)
-        {
-            var cleanedName = name.Trim().ToUpper();
+        var normalizedIngredients = ingredients
+            .Select(IngredientNormalizer.Normalize)
+            .Where(name => name.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
+        foreach (var cleanedName in normalizedIngredients)
+        {
             var ingredient = await _context.Ingredients
             .Include(i => i.CategoryMappings)
             .ThenInclude(m => m.Category)
             .ThenInclude(c => c.ConditionRules)
-            .FirstOrDefaultAsync(i => i.InciName == cleanedName);
+            .FirstOrDefaultAsync(i => i.NormalizedInciName == cleanedName);
 
             if (ingredient == null)
             {
