@@ -90,7 +90,7 @@ function ScanPage() {
     html5Qrcode.start(
       // 1) Camera config: use the back camera (better for scanning
       //    a barcode on a physical product than the front camera)
-      { facingMode: 'user' },
+      { facingMode: 'environment' },
       // 2) Scan config: 10 frames per second, and a wide scan box on
       //    screen showing where to line up the barcode
       { fps: 10, qrbox: { width: 300, height: 120 } },

@@ -97,11 +97,25 @@ button {
   text-decoration: none;
   font-weight: 600;
   font-size: 20px;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
 .nav-item.active {
   background: var(--green-soft);
   border-color: transparent;
+}
+
+.nav-item:hover {
+  color: var(--green-dark);
+  border-color: var(--green);
+  background: #f8fbf6;
+  transform: translateY(-1px);
+}
+
+.nav-item.active:hover {
+  background: var(--green-soft);
+  border-color: transparent;
+  transform: none;
 }
 
 .nav-icon {
@@ -203,6 +217,7 @@ button {
   border-radius: 7px;
   font-size: 13px;
   font-weight: 600;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
 .action-card button {
@@ -212,10 +227,29 @@ button {
   color: white;
   background: var(--green);
   border-color: var(--green);
+  
 }
 
-.action-card button:hover,
-.action-card button:focus-visible,
+.action-card button:hover {
+  background: var(--green-soft);
+  border-color: var(--green-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(70, 111, 75, 0.18);
+  color: var(--green-dark);
+}
+
+.action-card button:focus-visible {
+  background: var(--green-dark);
+  border-color: var(--green-dark);
+  outline: 3px solid rgba(94, 133, 97, 0.28);
+  outline-offset: 3px;
+}
+
+.action-card button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
 .show-all-button:hover,
 .show-all-button:focus-visible {
   color: white;
