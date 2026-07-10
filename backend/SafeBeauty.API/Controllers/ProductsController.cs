@@ -53,7 +53,9 @@ public class ProductsController : ControllerBase
         var productName = product.TryGetProperty("product_name", out var nameEl)
         ? nameEl.GetString() ?? string.Empty : string.Empty;
 
-        // Extrack ingredient names from ingredients array
+        // Extract ingredient names from the structured ingredients array.
+        // Open Beauty Facts / Open Beauty Facts often contains a parsed
+        // ingredients array, but not always.
         var ingredientNames = new List<string>();
         if (product.TryGetProperty("ingredients", out var ingredientsEl) &&
             ingredientsEl.ValueKind == JsonValueKind.Array)
@@ -68,6 +70,15 @@ public class ProductsController : ControllerBase
             }
         }
 
+        // Fallback: many Open Beauty Facts records store ingredients only as
+        // a raw text field, for example "Aqua, Glycerin, Niacinamide".
+        // Without this fallback, valid products can be found by barcode but
+        // still produce an empty analysis.
+        if (ingredientNames.Count == 0)
+        {
+            ingredientNames.AddRange(ExtractIngredientsFromText(product));
+        }
+
         // Analyse extracted ingredients
         var analysis = await _analysisService.AnalyseAsync(ingredientNames);
         return Ok(new ProductAnalyseResponse
@@ -77,6 +88,30 @@ public class ProductsController : ControllerBase
             Analysis = analysis
         });
 
+    }
+
+    private static IEnumerable<string> ExtractIngredientsFromText(JsonElement product)
+    {
+        var textFields = new[]
+        {
+            "ingredients_text",
+            "ingredients_text_en",
+            "ingredients_text_fr"
+        };
+
+        foreach (var field in textFields)
+        {
+            if (!product.TryGetProperty(field, out var textEl)) continue;
+
+            var raw = textEl.GetString();
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+
+            return raw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(ingredient => !string.IsNullOrWhiteSpace(ingredient));
+        }
+
+        return Enumerable.Empty<string>();
     }
 
 }

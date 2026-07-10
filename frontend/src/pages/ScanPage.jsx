@@ -1,11 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode'
+import {
+  Html5Qrcode,
+  Html5QrcodeScannerState,
+  Html5QrcodeSupportedFormats
+} from 'html5-qrcode'
 import axios from 'axios'
 
 // Base URL for the backend API, kept in one place so it only needs
 // to change in a single spot (e.g. when deploying to Azure later).
 const API_URL = import.meta.env.VITE_API_URL || '/api'
+
+const BARCODE_FORMATS = [
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E
+]
+
+const getBarcodeScanBox = (viewfinderWidth, viewfinderHeight) => {
+  const width = Math.floor(Math.min(viewfinderWidth * 0.92, 460))
+  const height = Math.floor(Math.min(viewfinderHeight * 0.32, 180))
+
+  return {
+    width,
+    height: Math.max(height, 120)
+  }
+}
 
 const stopScanner = async (scanner) => {
   const state = scanner.getState()
@@ -84,16 +105,29 @@ function ScanPage() {
     // Creates a new scanner instance. 'reader' is the id of the <div>
     // below — the library will inject the camera video feed directly
     // into that element, bypassing normal React rendering.
-    const html5Qrcode = new Html5Qrcode('reader')
+    const html5Qrcode = new Html5Qrcode('reader', {
+      formatsToSupport: BARCODE_FORMATS,
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true
+      }
+    })
 
     // .start() begins the camera and barcode scanning. It takes 3 arguments:
     html5Qrcode.start(
       // 1) Camera config: use the back camera (better for scanning
       //    a barcode on a physical product than the front camera)
       { facingMode: 'environment' },
-      // 2) Scan config: 10 frames per second, and a wide scan box on
+      // 2) Scan config: 15 frames per second, and a wide scan box on
       //    screen showing where to line up the barcode
-      { fps: 10, qrbox: { width: 300, height: 120 } },
+      {
+        fps: 15,
+        qrbox: getBarcodeScanBox,
+        videoConstraints: {
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      },
       // 3) Callback function — runs automatically once a barcode is
       //    successfully detected. `barcode` is the decoded value (a string).
       //    Marked `async` because it needs to `await` two things below:
