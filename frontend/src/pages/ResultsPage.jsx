@@ -1,22 +1,9 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-// Reusable card component — replaces the inline ingredient markup
-// that used to be written directly here (avoids duplicating the same JSX in two places).
-// It has its own internal color dictionary, so the old `ratingColor` object
-// that used to live in this file is no longer needed and has been removed.
 import IngredientCard from '../components/IngredientCard'
-// Same idea, but for ingredients the app couldn't find in the database —
-// replaces the inline <div> that used to be written directly in the map() below.
 import UnknownIngredientCard from '../components/UnknownIngredientCard'
 
-// The order in which safety-rating sections appear on the page.
-// Red first (prohibited — most important), then Amber (caution),
-// then Green (regulator-approved), then Grey (no regulatory data).
-// This array drives BOTH the order and the section titles below,
-// so changing the order here changes the whole page — one place to edit.
 const RATING_ORDER = ['Red', 'Amber', 'Green', 'Grey']
 
-// Human-readable titles shown as the heading of each section.
-// Keys match the safetyRating strings that come back from the API.
 const RATING_TITLES = {
   Red: 'Red — avoid',
   Amber: 'Amber — caution',
@@ -24,51 +11,179 @@ const RATING_TITLES = {
   Grey: 'Grey — no regulatory rating'
 }
 
+const IMPORTANT_CATEGORY_EXCLUSIONS = new Set(['EU Glossary Ingredient'])
+
+const FORMULA_ROLES = [
+  {
+    title: 'Hydration helpers',
+    technical: 'Humectants',
+    description: 'Help attract and hold water in the skin.',
+    match: (item) => hasCategory(item, 'Humectants')
+  },
+  {
+    title: 'Skin-softening ingredients',
+    technical: 'Emollients',
+    description: 'Help soften and smooth the skin surface.',
+    match: (item) => hasCategory(item, 'Emollients')
+  },
+  {
+    title: 'UV protection filters',
+    technical: 'UV Filter',
+    description: 'Filter UV radiation and are commonly used in SPF products.',
+    match: (item) => hasCategory(item, 'UV Filter')
+  },
+  {
+    title: 'Preservation system',
+    technical: 'Preservatives',
+    description: 'Help keep the product stable and reduce microbial growth.',
+    match: (item) => hasCategory(item, 'Preservative')
+  },
+  {
+    title: 'Fragrance',
+    technical: 'Fragrance',
+    description: 'Added for scent; may matter for fragrance-sensitive users.',
+    match: (item) => hasCategory(item, 'Fragrance')
+  },
+  {
+    title: 'Regulatory notes',
+    technical: 'Restricted substances',
+    description: 'Ingredients with specific regulatory conditions or concentration limits.',
+    match: (item) => hasCategory(item, 'Restricted Substance') || item.safetyRating === 'Red'
+  }
+]
+
+function splitCategories(categoryText = '') {
+  return categoryText
+    .split(',')
+    .map((category) => category.trim())
+    .filter(Boolean)
+}
+
+function countBy(items, getKey) {
+  return items.reduce((counts, item) => {
+    const key = getKey(item)
+    if (!key) return counts
+    counts[key] = (counts[key] || 0) + 1
+    return counts
+  }, {})
+}
+
+function getTopCategories(items) {
+  const counts = {}
+
+  items.forEach((item) => {
+    splitCategories(item.category)
+      .filter((category) => !IMPORTANT_CATEGORY_EXCLUSIONS.has(category))
+      .forEach((category) => {
+        counts[category] = (counts[category] || 0) + 1
+      })
+  })
+
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+}
+
+function getFormulaRoles(items) {
+  return FORMULA_ROLES
+    .map((role) => ({
+      ...role,
+      ingredients: items.filter(role.match)
+    }))
+    .filter((role) => role.ingredients.length > 0)
+}
+
+function hasCategory(item, categoryName) {
+  return splitCategories(item.category).includes(categoryName)
+}
+
+function detectProductSignals(items) {
+  const uvFilters = items.filter((item) => hasCategory(item, 'UV Filter'))
+  const humectants = items.filter((item) => hasCategory(item, 'Humectants'))
+  const emollients = items.filter((item) => hasCategory(item, 'Emollients'))
+  const preservatives = items.filter((item) => hasCategory(item, 'Preservative'))
+  const fragrance = items.filter((item) => hasCategory(item, 'Fragrance'))
+
+  const signals = []
+
+  if (uvFilters.length >= 3) {
+    signals.push({
+      title: 'Likely sunscreen / SPF product',
+      text: `${uvFilters.length} UV filters were identified, so the ingredient profile strongly suggests sun protection.`
+    })
+  }
+
+  if (humectants.length > 0) {
+    signals.push({
+      title: 'Hydration support',
+      text: `${humectants.length} humectant ingredient(s) may help attract or hold water in the formula.`
+    })
+  }
+
+  if (emollients.length > 0) {
+    signals.push({
+      title: 'Skin-conditioning base',
+      text: `${emollients.length} emollient ingredient(s) suggest a smoothing or moisturising cosmetic base.`
+    })
+  }
+
+  if (preservatives.length > 0) {
+    signals.push({
+      title: 'Preserved formula',
+      text: `${preservatives.length} preservative ingredient(s) were found.`
+    })
+  }
+
+  if (fragrance.length > 0) {
+    signals.push({
+      title: 'Fragrance present',
+      text: 'Fragrance/parfum appears in the ingredient list and may matter for sensitive profiles.'
+    })
+  }
+
+  return signals.length > 0
+    ? signals
+    : [{ title: 'General cosmetic formula', text: 'No strong product-type signal was detected from the available categories.' }]
+}
+
+function getPriorityIngredients(grouped, unknownIngredients) {
+  const avoidFlagged = [...grouped.Red, ...grouped.Amber, ...grouped.Grey, ...grouped.Green]
+    .filter((item) => item.conditionFlags?.some((flag) => flag.flagType === 'Avoid'))
+
+  const regulatoryConcerns = [...grouped.Red, ...grouped.Amber]
+
+  return [
+    ...avoidFlagged,
+    ...regulatoryConcerns
+  ]
+    .filter((item, index, all) => all.findIndex((other) => other.inciName === item.inciName) === index)
+    .slice(0, 5)
+    .concat(unknownIngredients.slice(0, 2).map((item) => ({
+      inciName: item.name,
+      safetyRating: 'Unknown',
+      category: 'Not found in database',
+      function: item.aiLabel ? `AI estimate: ${item.aiLabel}` : '',
+      conditionFlags: []
+    })))
+}
+
 function ResultsPage() {
-  // HOOK: useLocation()
-  // This hook reads information about the current "page" (route) the user is on.
-  // One piece of that information is `state` — data that was passed along
-  // when navigate() was called to bring the user to this page.
-  // Destructuring { state } immediately pulls out just that one field.
   const { state } = useLocation()
-
-  // HOOK: useNavigate()
-  // This hook gives us a function called `navigate`.
-  // Calling navigate('/some-path') moves the user to another page
-  // WITHOUT a full browser reload (this is how React apps handle page changes).
   const navigate = useNavigate()
-
-  // Optional chaining (?.): if `state` exists, get its `results` field.
-  // If `state` is undefined (e.g. user opened this URL directly, with no navigation history),
-  // this safely returns undefined instead of throwing an error.
   const results = state?.results
 
-  // Guard clause: if there's no data to show, stop here and render a fallback UI.
-  // This is an early return — if this condition is true, none of the code below runs.
   if (!results) {
     return (
       <div>
         <p>No results found.</p>
-        {/* Clicking this button calls navigate('/'), sending the user back to the home page */}
         <button onClick={() => navigate('/')}>Go Home</button>
       </div>
     )
   }
 
-  // GROUPING STEP
-  // Before rendering, we sort the flat list of ingredients into buckets
-  // keyed by their safetyRating. This is what turns the plain list into
-  // colour-grouped sections.
-  //
-  // We start with an empty bucket for every known rating so the order is
-  // guaranteed and predictable:  { Red: [], Amber: [], Green: [], Grey: [] }
   const grouped = { Red: [], Amber: [], Green: [], Grey: [] }
 
-  // Loop over every analysed ingredient and drop it into the right bucket.
   results.results.forEach((item) => {
-    // If the rating is one we know about, push into that bucket.
-    // If somehow an unexpected rating arrives, fall back to Grey so
-    // nothing silently disappears from the page.
     if (grouped[item.safetyRating]) {
       grouped[item.safetyRating].push(item)
     } else {
@@ -76,61 +191,135 @@ function ResultsPage() {
     }
   })
 
+  const ratingCounts = countBy(results.results, (item) => item.safetyRating)
+  const totalKnown = results.results.length
+  const totalUnknown = results.unknownIngredients.length
+  const totalIngredients = totalKnown + totalUnknown
+  const productSignals = detectProductSignals(results.results)
+  const priorityIngredients = getPriorityIngredients(grouped, results.unknownIngredients)
+  const formulaRoles = getFormulaRoles(results.results)
+
   return (
-    <div>
-      <h2>Analysis Results</h2>
+    <div className="results-page">
+      <div className="results-header">
+        <div>
+          <p className="eyebrow">Analysis Results</p>
+          <h1>Product overview</h1>
+        </div>
+        <button className="secondary-button" onClick={() => navigate('/')}>
+          Analyse another product
+        </button>
+      </div>
+
       {results.aiSummary && (
-        <div style={{background: '#f5f5f5', borderLeft: '4px solid #2196f3', padding: '12px', marginBottom: '16px'}}>
-          <strong>Product Insight</strong>
+        <section className="insight-card">
+          <span className="section-label">AI summary</span>
           <p>{results.aiSummary}</p>
-        </div>  
+        </section>
       )}
 
-      {/* SECTION RENDERING
-          Instead of one flat .map() over all ingredients, we now loop over
-          RATING_ORDER (Red, Amber, Green, Grey). For each rating we take its
-          bucket from `grouped` and render a titled section — but only if that
-          bucket actually has ingredients in it (so empty colours don't show
-          an empty heading). */}
-      {RATING_ORDER.map((rating) => {
-        // Pull this rating's ingredients out of the grouped object.
-        const items = grouped[rating]
+      <section className="summary-grid">
+        <article className="summary-card">
+          <span className="section-label">Ingredient coverage</span>
+          <strong>{totalIngredients}</strong>
+          <p>{totalKnown} found in database · {totalUnknown} unknown</p>
+        </article>
 
-        // If there are none of this colour, render nothing for this section.
-        // Returning null from inside .map() means "skip this one".
-        if (items.length === 0) return null
-
-        return (
-          <div key={rating} style={{marginBottom: '10px'}}>
-            {/* Section heading, e.g. "Amber — caution".
-                The count in brackets tells the user how many are in this group. */}
-            <h3>{RATING_TITLES[rating]} ({items.length})</h3>
-
-            {/* Now the familiar card loop, but only over THIS colour's items.
-                We build a stable key from the ingredient name plus its index
-                within this section, so React can track each card reliably. */}
-            {items.map((item, index) => (
-              <IngredientCard key={`${rating}-${item.inciName}-${index}`} ingredient={item} />
+        <article className="summary-card">
+          <span className="section-label">Ratings</span>
+          <div className="rating-pills">
+            {RATING_ORDER.map((rating) => (
+              <span key={rating} className={`rating-pill ${rating.toLowerCase()}`}>
+                {rating} {ratingCounts[rating] || 0}
+              </span>
             ))}
           </div>
-        )
-      })}
+        </article>
+      </section>
 
-      {/* Conditional rendering: only show this whole section if there's at least one unknown ingredient */}
-      {results.unknownIngredients.length > 0 && (
-        <div>
-          <h3>Unknown Ingredients</h3>
-          {/* Same pattern as above: loop through the array and render one
-              UnknownIngredientCard per name, instead of writing the same
-              <div> markup inline for every item */}
-          {results.unknownIngredients.map((item, i) => (
-            <UnknownIngredientCard key={i} name={item.name} aiLabel={item.aiLabel} confidence={item.confidence} />
+      <section className="results-section">
+        <h2>What this formula seems to be doing</h2>
+        <div className="signal-grid">
+          {productSignals.map((signal) => (
+            <article className="signal-card" key={signal.title}>
+              <h3>{signal.title}</h3>
+              <p>{signal.text}</p>
+            </article>
           ))}
         </div>
+      </section>
+
+      {formulaRoles.length > 0 && (
+        <section className="results-section">
+          <h2>Formula roles</h2>
+          <div className="role-grid">
+            {formulaRoles.map((role) => (
+              <article className="role-card" key={role.title}>
+                <div>
+                  <h3>{role.title}</h3>
+                  <span>{role.technical}</span>
+                  <p>{role.description}</p>
+                </div>
+                <ul>
+                  {role.ingredients.map((ingredient) => (
+                    <li key={`${role.title}-${ingredient.inciName}`}>{ingredient.inciName}</li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
 
-      {/* Same navigate() pattern as above — sends the user back to the home page */}
-      <button onClick={() => navigate('/')}>Analyse Another Product</button>
+      {priorityIngredients.length > 0 && (
+        <section className="results-section">
+          <h2>Key items to notice</h2>
+          <div className="priority-list">
+            {priorityIngredients.map((item, index) => (
+              <div className="priority-card" key={`${item.inciName}-${index}`}>
+                <strong>{item.inciName}</strong>
+                <span>{item.safetyRating}</span>
+                {item.category && <p>{item.category}</p>}
+                {item.conditionFlags?.length > 0 && (
+                  <p>{item.conditionFlags[0].flagType}: {item.conditionFlags[0].notes}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <details className="full-analysis">
+        <summary>Show full ingredient breakdown</summary>
+
+        {RATING_ORDER.map((rating) => {
+          const items = grouped[rating]
+          if (items.length === 0) return null
+
+          return (
+            <div key={rating} className="rating-section">
+              <h3>{RATING_TITLES[rating]} ({items.length})</h3>
+              {items.map((item, index) => (
+                <IngredientCard key={`${rating}-${item.inciName}-${index}`} ingredient={item} />
+              ))}
+            </div>
+          )
+        })}
+
+        {results.unknownIngredients.length > 0 && (
+          <div className="rating-section">
+            <h3>Unknown ingredients ({results.unknownIngredients.length})</h3>
+            {results.unknownIngredients.map((item, i) => (
+              <UnknownIngredientCard
+                key={i}
+                name={item.name}
+                aiLabel={item.aiLabel}
+                confidence={item.confidence}
+              />
+            ))}
+          </div>
+        )}
+      </details>
     </div>
   )
 }
