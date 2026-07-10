@@ -76,8 +76,10 @@ public class AiSummaryService
                     new { role = "user", content = userMessage }
                 },
 
-                // Maximum answer length. 150 tokens is enough for a short 2-3 sentence summary.
-                max_tokens = 150,
+                // Longer than the early MVP summary because the UI now shows
+                // the insight as a structured product overview rather than a
+                // single short paragraph.
+                max_tokens = 320,
 
                 // Low temperature makes the model less creative and more predictable.
                 // For safety-related explanations, we want cautious wording, not imagination.
@@ -214,6 +216,14 @@ public class AiSummaryService
             .Select(r => r.InciName)
             .ToList();
 
+        var benefits = results.Results
+            .SelectMany(r => r.ConditionFlags
+                .Where(f => f.FlagType == "Beneficial")
+                .Select(f => $"{r.InciName} ({f.Condition}: {f.Notes})"))
+            .ToList();
+
+        var productSignals = BuildProductSignals(results);
+
         // For now IngredientAnalysisService passes an empty list.
         // Later, if the user opts into personalised summaries, this line will include
         // selected skin concerns such as Rosacea or AtopicDermatitis.
@@ -227,7 +237,9 @@ public class AiSummaryService
         // the confidence wording we already chose in C# without making it stronger.
         var systemMessage =
     "You are a cosmetic ingredient assistant. Using ONLY the analysis data the user gives you, " +
-    "write a short 2-3 sentence product summary for a general audience. " +
+    "write a clear structured product overview for a general audience. " +
+    "Use exactly these four short sections with labels: 'Formula profile:', 'Main cosmetic roles:', 'Personalised notes:', and 'Data limitations:'. " +
+    "Write 1-2 concise sentences per section. " +
 
     "This is cosmetic ingredient information, not medical advice. " +
     "Do not claim that the product treats, heals, soothes, calms, alleviates, prevents, cures, improves, or manages any medical condition or symptoms. " +
@@ -235,18 +247,26 @@ public class AiSummaryService
     "Do not recommend the product for a medical or skin condition. " +
 
     "You may describe ingredient functions only as cosmetic functions, for example hydration, humectant effect, smoothing, cleansing, preservative, fragrance, or exfoliation. " +
-    "Use cautious wording such as 'contains ingredients commonly used for', 'is flagged as a potential concern', 'may be relevant for cosmetic hydration', or 'has mixed relevance for the selected profile'. " +
+    "Use cautious wording such as 'contains ingredients commonly used for', 'is flagged as a potential concern', or 'may be relevant for cosmetic hydration'. " +
 
     "If any Avoid flags are present, clearly mention that the product has mixed relevance for the selected profile. " +
+    "If Beneficial flags are present, you may mention them as cosmetic profile-supporting signals, but do not claim the product treats, improves, manages, or is suitable for a medical condition. " +
+    "When mentioning Beneficial flags, use cautious wording such as 'contains ingredients flagged as beneficial in the cosmetic rule set' or 'may be relevant to the selected profile's cosmetic needs'. " +
     "If a fragrance or parfum ingredient is flagged, mention it as a potential concern for the selected profile. " +
     "Only ingredients explicitly listed under 'Potential concerns (Avoid flags)' may be described as concerns for the selected profile. " +
     "Never describe an individual ingredient as having 'mixed relevance' unless that ingredient is explicitly listed under 'Potential concerns (Avoid flags)'. " +
     "The phrase 'mixed relevance for the selected profile' may describe the product as a whole only when at least one Avoid flag is present, and the reason must be an ingredient from that Avoid list. " +
+    "If 'Potential concerns (Avoid flags)' is 'none', the Personalised notes section must say that no ingredients were specifically flagged as Avoid for the selected profile, and must not use the phrase 'mixed relevance'. " +
     "A SafetyRating or a regulatory category such as Amber, Restricted Substance, Preservative, or Keratolytic is not by itself evidence of irritation or incompatibility with sensitive skin. " +
+    "Restricted Substance is a regulatory classification only. " +
     "If you mention a restricted ingredient, say only that regulatory conditions or concentration limits may apply; do not turn that classification into a medical or personalised warning. " +
+    "A restricted ingredient may be mentioned under Data limitations or regulatory notes, but never as the reason for a personalised profile concern unless the same ingredient is explicitly listed under Potential concerns (Avoid flags). " +
     "Do not translate 'skin conditioning' or another listed function into hydration unless HUMECTANT or another explicit hydration-related function is present. " +
+    "CosIng functions are possible listed functions for an ingredient in cosmetics, not proof of the ingredient's exact purpose in this specific product. " +
+    "If a function list contains context-specific uses such as hair conditioning or oral care, do not mention those unless the Product signals line supports that product context. " +
 
-    "Do not infer the product type, such as sunscreen, cleanser, or fragrance-based formula, unless the data explicitly says so. " +
+    "Do not infer the product type, such as sunscreen, cleanser, or fragrance-based formula, unless the Product signals line explicitly supports it. " +
+    "If the Product signals line says the formula is likely a sunscreen or SPF product because it contains multiple UV filters, you may explain that as a likely cosmetic purpose. " +
     "Known ingredients come from a curated database and can be described with more confidence. " +
     "Ingredients marked 'not found in database' come from a general AI classifier; they are estimates, not verified facts. " +
     "For those ingredients, a confidence wording is already provided, for example 'low confidence'. " +
@@ -260,12 +280,59 @@ public class AiSummaryService
         // Notice the wording: we are not asking the model to analyse from scratch.
         // We are giving it our analysis and asking it to turn that into readable text.
         var userMessage =
+            $"Product signals: {(productSignals.Any() ? string.Join("; ", productSignals) : "none")}.\n" +
             $"Known ingredients (from database): {(known.Any() ? string.Join(", ", known) : "none")}.\n" +
             $"Unknown ingredients (AI-classified): {(unknown.Any() ? string.Join("; ", unknown) : "none")}.\n" +
             $"Potential concerns (Avoid flags): {(concerns.Any() ? string.Join(", ", concerns) : "none")}.\n" +
+            $"Beneficial profile signals: {(benefits.Any() ? string.Join("; ", benefits) : "none")}.\n" +
+            $"Personalised interpretation rule: {(concerns.Any() ? "Avoid flags are present, so personalised concerns may be mentioned only for those listed ingredients." : "There are no Avoid flags. Do not say mixed relevance for the selected profile. Do not treat regulatory restrictions as personalised concerns.")}\n" +
             $"{conditionsLine}";
 
         return (systemMessage, userMessage);
+    }
+
+    private static List<string> BuildProductSignals(AnalyseResponse results)
+    {
+        var signals = new List<string>();
+
+        var uvFilters = results.Results
+            .Where(r => HasCategory(r, "UV Filter"))
+            .Select(r => r.InciName)
+            .ToList();
+
+        var humectants = results.Results
+            .Where(r => HasCategory(r, "Humectants"))
+            .Select(r => r.InciName)
+            .ToList();
+
+        var emollients = results.Results
+            .Where(r => HasCategory(r, "Emollients"))
+            .Select(r => r.InciName)
+            .ToList();
+
+        if (uvFilters.Count >= 3)
+        {
+            signals.Add($"Likely sunscreen/SPF product: {uvFilters.Count} UV filters identified ({string.Join(", ", uvFilters.Take(5))})");
+        }
+
+        if (humectants.Count > 0)
+        {
+            signals.Add($"Hydration-related formula: humectants identified ({string.Join(", ", humectants.Take(5))})");
+        }
+
+        if (emollients.Count > 0)
+        {
+            signals.Add($"Skin-conditioning/emollient base: emollients identified ({string.Join(", ", emollients.Take(5))})");
+        }
+
+        return signals;
+    }
+
+    private static bool HasCategory(IngredientResultDto result, string category)
+    {
+        return result.Category
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(c => string.Equals(c, category, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string BuildFallbackSummary(AnalyseResponse results)
@@ -281,15 +348,17 @@ public class AiSummaryService
             .Select(r => r.InciName)
             .ToList();
 
+        var productSignals = BuildProductSignals(results);
+
         var summary =
-            $"This product contains {total} ingredient(s): " +
-            $"{known} found in the database, {unknown} not recognised. ";
+            $"Formula profile: {(productSignals.Any() ? string.Join("; ", productSignals) : "No strong product-type signal was detected from the available categories.")}\n" +
+            $"Main cosmetic roles: This product contains {total} ingredient(s): {known} found in the database and {unknown} not recognised.\n";
 
         summary += concerns.Any()
-            ? $"Potential concerns based on the ingredient list: {string.Join(", ", concerns)}. "
-            : "No specific concerns were identified in the known ingredients. ";
+            ? $"Personalised notes: Potential concerns based on the selected profile: {string.Join(", ", concerns)}.\n"
+            : "Personalised notes: No specific Avoid flags were identified in the known ingredients for the selected profile.\n";
 
-        summary += "This is a preliminary assessment based on available data.";
+        summary += "Data limitations: This is a preliminary cosmetic ingredient assessment based on available database matches and does not replace professional advice.";
 
         return summary;
     }

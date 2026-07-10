@@ -12,6 +12,7 @@ public class IngredientAnalysisService
     private readonly SafeBeautyDbContext _context;
     private readonly HuggingFaceService _huggingFace;
     private readonly AiSummaryService _aiSummary;
+    private const int MaxUnknownIngredientsForAiClassification = 5;
 
     // Constructor injection - SafeBeautyDbContext is provided by ASP.NET DI container
     public IngredientAnalysisService(SafeBeautyDbContext context, HuggingFaceService huggingFace, AiSummaryService aiSummary)
@@ -42,18 +43,36 @@ public class IngredientAnalysisService
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-        foreach (var cleanedName in normalizedIngredients)
-        {
-            var ingredient = await _context.Ingredients
+        var knownIngredients = await _context.Ingredients
             .Include(i => i.CategoryMappings)
             .ThenInclude(m => m.Category)
             .ThenInclude(c => c.ConditionRules)
-            .FirstOrDefaultAsync(i => i.NormalizedInciName == cleanedName);
+            .Where(i => normalizedIngredients.Contains(i.NormalizedInciName))
+            .ToListAsync();
 
-            if (ingredient == null)
+        var knownIngredientLookup = knownIngredients
+            .ToDictionary(i => i.NormalizedInciName, StringComparer.Ordinal);
+
+        var unknownIngredients = normalizedIngredients
+            .Where(name => !knownIngredientLookup.ContainsKey(name))
+            .ToList();
+
+        var shouldClassifyUnknownIngredients =
+            unknownIngredients.Count <= MaxUnknownIngredientsForAiClassification;
+
+        foreach (var cleanedName in normalizedIngredients)
+        {
+            if (!knownIngredientLookup.TryGetValue(cleanedName, out var ingredient))
             {
-                var aiResult = await _huggingFace.ClassifyAsync(cleanedName);
-                response.UnknownIngredients.Add(aiResult);
+                response.UnknownIngredients.Add(shouldClassifyUnknownIngredients
+                    ? await _huggingFace.ClassifyAsync(cleanedName)
+                    : new AiIngredientResultDto
+                    {
+                        Name = cleanedName,
+                        AiLabel = "Unknown",
+                        Confidence = 0
+                    });
+
                 continue;
             }
 
