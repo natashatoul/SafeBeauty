@@ -5,18 +5,23 @@ import ManualInputPage from './pages/ManualInputPage'
 import ResultsPage from './pages/ResultsPage'
 import ProfilePage from './pages/ProfilePage'
 import Navbar from './components/Navbar'
+import './App.css'
 
 function App() {
   return (
     <BrowserRouter basename="/SafeBeauty">
-    <Navbar/>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/scan" element={<ScanPage />} />
-        <Route path="/manual" element={<ManualInputPage />} />
-        <Route path="/results" element={<ResultsPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-      </Routes>
+      <div className="app-shell">
+        <Navbar />
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/scan" element={<ScanPage />} />
+            <Route path="/manual" element={<ManualInputPage />} />
+            <Route path="/results" element={<ResultsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+          </Routes>
+        </main>
+      </div>
     </BrowserRouter>
   )
 }
