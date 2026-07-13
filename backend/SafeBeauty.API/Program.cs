@@ -36,7 +36,6 @@ builder.Services.AddScoped<IngredientDeduplicationService>();
 builder.Services.AddHttpClient<HuggingFaceService>();
 builder.Services.AddHttpClient<AiSummaryService>();
 builder.Services.AddScoped<IngredientAnalysisService>();
-builder.Services.AddHttpClient();
 
 // CORS: allow the deployed frontend origin to call this API from the browser
 // CORS- Cross-Origin Resource Sharing - protection for browser

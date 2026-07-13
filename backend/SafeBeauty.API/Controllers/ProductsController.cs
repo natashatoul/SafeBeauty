@@ -21,7 +21,9 @@ public class ProductsController : ControllerBase
     //GET - api/Products/barcode/{barcode}
     // Fetches product from Open Beauty Facts API and analises ingredients
     [HttpGet("barcode/{barcode}")]
-    public async Task<ActionResult<ProductAnalyseResponse>> GetByBarcode(string barcode)
+    public async Task<ActionResult<ProductAnalyseResponse>> GetByBarcode(
+        string barcode,
+        [FromQuery] List<string>? userConditions)
     {
         if (!BarcodeValidator.TryValidate(barcode, out var validationError))
         {
@@ -63,7 +65,7 @@ public class ProductsController : ControllerBase
 
             try
             {
-                return await BuildProductResponse(barcode, json);
+                return await BuildProductResponse(barcode, json, userConditions);
             }
             catch (JsonException)
             {
@@ -75,7 +77,8 @@ public class ProductsController : ControllerBase
 
     private async Task<ActionResult<ProductAnalyseResponse>> BuildProductResponse(
         string barcode,
-        string json)
+        string json,
+        List<string>? userConditions)
     {
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
@@ -133,7 +136,7 @@ public class ProductsController : ControllerBase
         }
 
         // Analyse extracted ingredients
-        var analysis = await _analysisService.AnalyseAsync(ingredientNames);
+        var analysis = await _analysisService.AnalyseAsync(ingredientNames, userConditions);
         return new ProductAnalyseResponse
         {
             ProductName = productName,

@@ -37,9 +37,21 @@ public class IngredientAnalysisService
             .Select(c => c!.Value)
             .ToHashSet();
 
-        var normalizedIngredients = ingredients
+        // Treat each request item defensively: older clients and copied labels
+        // may send a complete bullet-separated list as one array element.
+        var parsedIngredients = IngredientListParser.Parse(ingredients);
+
+        var normalizedIngredients = parsedIngredients
             .Select(IngredientNormalizer.Normalize)
             .Where(name => name.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        // Include legacy punctuation variants so an existing database created
+        // before the current normalizer still resolves values such as
+        // "ALCOHOL DENAT.". The result is keyed with the current normalizer below.
+        var lookupCandidates = normalizedIngredients
+            .SelectMany(name => new[] { name, $"{name}." })
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
@@ -47,11 +59,12 @@ public class IngredientAnalysisService
             .Include(i => i.CategoryMappings)
             .ThenInclude(m => m.Category)
             .ThenInclude(c => c.ConditionRules)
-            .Where(i => normalizedIngredients.Contains(i.NormalizedInciName))
+            .Where(i => lookupCandidates.Contains(i.NormalizedInciName))
             .ToListAsync();
 
         var knownIngredientLookup = knownIngredients
-            .ToDictionary(i => i.NormalizedInciName, StringComparer.Ordinal);
+            .GroupBy(i => IngredientNormalizer.Normalize(i.InciName), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
 
         var unknownIngredients = normalizedIngredients
             .Where(name => !knownIngredientLookup.ContainsKey(name))
@@ -76,11 +89,20 @@ public class IngredientAnalysisService
                 continue;
             }
 
+            var confirmedUvMapping = ingredient.CategoryMappings
+                .Any(UvFilterClassifier.IsConfirmedAnnexViMapping);
+            var relevantMappings = ingredient.CategoryMappings
+                .Where(mapping =>
+                    mapping.Category.Name != "UV Filter" ||
+                    UvFilterClassifier.IsConfirmedAnnexViMapping(mapping))
+                .ToList();
+
             var result = new IngredientResultDto
             {
                 InciName = ingredient.InciName,
                 SafetyRating = ingredient.SafetyRating.ToString(),
-                Category = string.Join(", ", ingredient.CategoryMappings
+                IsUvFilter = confirmedUvMapping,
+                Category = string.Join(", ", relevantMappings
                     .Select(m => m.Category.Name)
                     .OrderBy(name => name)),
                 Function = ingredient.Function,
@@ -88,7 +110,7 @@ public class IngredientAnalysisService
                 // If the user did not select any conditions, this returns an
                 // empty list. If they selected conditions, only matching rules
                 // are shown.
-                ConditionFlags = ingredient.CategoryMappings
+                ConditionFlags = relevantMappings
                     .SelectMany(m => m.Category.ConditionRules)
                     .Where(cr => selectedConditions.Contains(cr.Condition))
                     .GroupBy(cr => cr.Id)
@@ -101,6 +123,9 @@ public class IngredientAnalysisService
                         EvidenceSource = cr.EvidenceSource
                     }).ToList()
             };
+            result.UvFilterType = result.IsUvFilter
+                ? UvFilterClassifier.Classify(ingredient.InciName)
+                : string.Empty;
             response.Results.Add(result);
         }
         response.AiSummary = await _aiSummary.SummariseAsync(response, userConditions ?? new List<string>());

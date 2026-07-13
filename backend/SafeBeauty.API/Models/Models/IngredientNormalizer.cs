@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace SafeBeauty.API.Models;
 
 // Static class = a "toolbox": it holds no state, you never create it with `new`.
@@ -9,8 +11,31 @@ public static class IngredientNormalizer
         "(WATER)",
         "(FRAGRANCE)",
         "(PARFUM)",
-        "(SHEA)"
+        "(SHEA)",
+        "(GRAPE)",
+        "(SUNFLOWER)"
     ];
+
+    private static readonly Dictionary<string, string> ExactAliases = new(StringComparer.Ordinal)
+    {
+        ["COCO-CAPRYLATE CAPRATE"] = "COCO-CAPRYLATE/CAPRATE",
+        ["AQUA / WATER / EAU"] = "AQUA",
+        ["AQUA/WATER/EAU"] = "AQUA",
+        ["COPERNICIA CERIFERA CERA / CARNAUBA WAX / CIRE DE CARNAUBA"] = "COPERNICIA CERIFERA CERA",
+        ["BUTYROSPERMUM PARKII BUTTER / SHEA BUTTER"] = "BUTYROSPERMUM PARKII BUTTER"
+    };
+
+    private static readonly Regex TrademarkSuffix = new(
+        @"\s*\([^)]*[®™][^)]*\)\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex FormulaReferenceSuffix = new(
+        @"\s*\(F\.?\s*I\.?\s*L\.?\s+[^)]*\)\s*[.;,]?\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex NumericFormulaReferenceSuffix = new(
+        @"\s*\.?\(\d+/\d+\)\s*[.;,]?\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public static string Normalize(string inciName)
     {
@@ -39,6 +64,18 @@ public static class IngredientNormalizer
             normalized = normalized.Replace(synonym, string.Empty);
         }
 
+        // Remove only an explicit trailing trademark qualifier, for example
+        // "Lanolin Alcohol (Eucerit®)". Regulatory qualifiers such as "(NANO)"
+        // remain untouched because they do not contain a trademark symbol.
+        normalized = TrademarkSuffix.Replace(normalized, string.Empty);
+
+        // Some L'Oréal-family labels append an internal formula reference to
+        // the final ingredient, for example "Xanthan Gum (F.I.L. N70032039/1)".
+        // It is packaging metadata rather than part of the INCI name. This is
+        // intentionally an exact F.I.L. pattern, not a broad bracket remover.
+        normalized = FormulaReferenceSuffix.Replace(normalized, string.Empty);
+        normalized = NumericFormulaReferenceSuffix.Replace(normalized, string.Empty);
+
         // Ingredient lists copied from websites often keep the sentence-ending
         // full stop on the final ingredient.
         normalized = normalized.Trim().TrimEnd('.', ';', ',').Trim();
@@ -48,6 +85,6 @@ public static class IngredientNormalizer
             normalized = normalized.Replace("  ", " ");
         }
 
-        return normalized;
+        return ExactAliases.GetValueOrDefault(normalized, normalized);
     }
 }
