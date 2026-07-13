@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using SafeBeauty.API.DTOs;
 
 namespace SafeBeauty.API.Services;
@@ -76,10 +77,7 @@ public class AiSummaryService
                     new { role = "user", content = userMessage }
                 },
 
-                // Longer than the early MVP summary because the UI now shows
-                // the insight as a structured product overview rather than a
-                // single short paragraph.
-                max_tokens = 320,
+                max_tokens = 280,
 
                 // Low temperature makes the model less creative and more predictable.
                 // For safety-related explanations, we want cautious wording, not imagination.
@@ -132,7 +130,16 @@ public class AiSummaryService
 
                 if (!string.IsNullOrWhiteSpace(text))
                 {
-                    return text.Trim();
+                    var summary = text.Trim();
+                    if (ViolatesSafetyBoundary(summary) || ContradictsProfileFlags(summary, results))
+                    {
+                        _logger.LogWarning(
+                            "AI summary crossed a medical or suitability boundary; using fallback. Summary: {Summary}",
+                            summary);
+                        return fallback;
+                    }
+
+                    return summary;
                 }
             }
 
@@ -150,67 +157,16 @@ public class AiSummaryService
         }
     }
 
-    // Turns a classifier confidence score into plain-English wording.
-    // This is deliberately done in C#, not by the LLM, so the same score always
-    // produces the same phrase. That makes the output reproducible and easier
-    // to defend: the model explains the result, but our code controls how much
-    // certainty is communicated to the user.
-    private static string DescribeConfidence(double confidence)
-    {
-        // Confidence may arrive as 0.56 (fraction) or 56 (percentage).
-        // This ternary operator is a short if/else:
-        //   condition ? value-if-true : value-if-false
-        // After this line, percent is always on a 0-100 scale.
-        var percent = confidence <= 1.0 ? confidence * 100.0 : confidence;
-
-        // A switch expression chooses the first matching threshold from top to bottom.
-        // "_" means "anything that did not match the previous cases".
-        return percent switch
-        {
-            >= 90 => "high confidence",
-            >= 75 => "moderate confidence",
-            >= 60 => "limited confidence",
-            _ => "low confidence"
-        };
-    }
-
     private static (string systemMessage, string userMessage) BuildMessages(
         AnalyseResponse results,
         List<string> userConditions)
     {
-        // Known ingredients are already analysed by our deterministic backend.
-        // We include only the fields the model is allowed to explain.
         var known = results.Results
-    .Select(r =>
-    {
-        var functionText = string.IsNullOrWhiteSpace(r.Function)
-            ? "function not available"
-            : r.Function;
-
-        return $"{r.InciName} ({r.SafetyRating}, {r.Category}, function: {functionText})";
-    })
-    .ToList();
-
-        // Unknown ingredients are not in the database, so their label comes from
-        // the existing zero-shot classifier. The confidence WORD is chosen here
-        // in C# and then handed to the LLM already decided.
-        var unknown = results.UnknownIngredients
-            .Select(u =>
-            {
-                // Normalise the score only for displaying a clean percentage.
-                // The DescribeConfidence method does its own normalisation too,
-                // so it is safe whether Confidence is stored as 0.56 or 56.
-                var percent = u.Confidence <= 1.0 ? u.Confidence * 100.0 : u.Confidence;
-                var rounded = (int)Math.Round(percent);
-                var confidenceWord = DescribeConfidence(u.Confidence);
-
-                // The escaped \" characters print real double quotes around the AI label.
-                return $"{u.Name} - not found in database; AI classifier suggests \"{u.AiLabel}\" with {confidenceWord} ({rounded}%)";
-            })
+            .Select(result =>
+                $"{result.InciName}: {string.Join(", ", GetPlainRoles(result))}; " +
+                $"regulatory rating {result.SafetyRating}")
             .ToList();
 
-        // These concerns come from our own condition rules, not from the LLM.
-        // This supports the "LLM explains, deterministic system decides" architecture.
         var concerns = results.Results
             .Where(r => r.ConditionFlags.Any(f => f.FlagType == "Avoid"))
             .Select(r => r.InciName)
@@ -219,27 +175,19 @@ public class AiSummaryService
         var benefits = results.Results
             .SelectMany(r => r.ConditionFlags
                 .Where(f => f.FlagType == "Beneficial")
-                .Select(f => $"{r.InciName} ({f.Condition}: {f.Notes})"))
+                .Select(_ => $"{r.InciName} (category-level profile rule)"))
             .ToList();
 
         var productSignals = BuildProductSignals(results);
 
-        // For now IngredientAnalysisService passes an empty list.
-        // Later, if the user opts into personalised summaries, this line will include
-        // selected skin concerns such as Rosacea or AtopicDermatitis.
         var conditionsLine = userConditions.Any()
-            ? $"User's skin concerns: {string.Join(", ", userConditions)}."
+            ? $"A profile with {userConditions.Count} selected condition(s) was provided. Refer to it only as 'the selected profile'; do not repeat condition names."
             : "No specific skin profile was provided.";
 
-        // The system message is the safety instruction.
-        // It tells the model to treat database-backed facts and AI-classified
-        // unknown ingredients differently. Most importantly, the model must use
-        // the confidence wording we already chose in C# without making it stronger.
         var systemMessage =
-    "You are a cosmetic ingredient assistant. Using ONLY the analysis data the user gives you, " +
-    "write a clear structured product overview for a general audience. " +
-    "Use exactly these four short sections with labels: 'Formula profile:', 'Main cosmetic roles:', 'Personalised notes:', and 'Data limitations:'. " +
-    "Write 1-2 concise sentences per section. " +
+    "You are a cosmetic ingredient assistant. Using ONLY the verified analysis facts supplied by the user, " +
+    "write one cohesive consumer-friendly paragraph of about 140-190 words that explains the overall formula, " +
+    "its main cosmetic roles, and what matters for the selected profile. Do not use headings or bullet points. " +
 
     "This is cosmetic ingredient information, not medical advice. " +
     "Do not claim that the product treats, heals, soothes, calms, alleviates, prevents, cures, improves, or manages any medical condition or symptoms. " +
@@ -248,15 +196,20 @@ public class AiSummaryService
 
     "You may describe ingredient functions only as cosmetic functions, for example hydration, humectant effect, smoothing, cleansing, preservative, fragrance, or exfoliation. " +
     "Use cautious wording such as 'contains ingredients commonly used for', 'is flagged as a potential concern', or 'may be relevant for cosmetic hydration'. " +
+    "Do not say that the formula or product is 'designed to' produce an effect; an ingredient list does not establish product intent, concentration, or performance. " +
 
     "If any Avoid flags are present, clearly mention that the product has mixed relevance for the selected profile. " +
     "If Beneficial flags are present, you may mention them as cosmetic profile-supporting signals, but do not claim the product treats, improves, manages, or is suitable for a medical condition. " +
     "When mentioning Beneficial flags, use cautious wording such as 'contains ingredients flagged as beneficial in the cosmetic rule set' or 'may be relevant to the selected profile's cosmetic needs'. " +
+    "Only ingredients explicitly listed under 'Beneficial profile signals' may be described as beneficial, profile-supporting, or relevant to the selected profile. " +
+    "Do not transfer a Beneficial flag from one ingredient, category, or list to another ingredient. " +
+    "If 'Beneficial profile signals' is 'none', do not make any beneficial or profile-supporting claim. " +
+    "A Beneficial flag may come from a broad category-level rule. It is not proof that an individual ingredient or the finished product benefits, treats, or is suitable for the condition. " +
     "If a fragrance or parfum ingredient is flagged, mention it as a potential concern for the selected profile. " +
     "Only ingredients explicitly listed under 'Potential concerns (Avoid flags)' may be described as concerns for the selected profile. " +
     "Never describe an individual ingredient as having 'mixed relevance' unless that ingredient is explicitly listed under 'Potential concerns (Avoid flags)'. " +
     "The phrase 'mixed relevance for the selected profile' may describe the product as a whole only when at least one Avoid flag is present, and the reason must be an ingredient from that Avoid list. " +
-    "If 'Potential concerns (Avoid flags)' is 'none', the Personalised notes section must say that no ingredients were specifically flagged as Avoid for the selected profile, and must not use the phrase 'mixed relevance'. " +
+    "If 'Potential concerns (Avoid flags)' is 'none', say that no ingredients were specifically flagged as Avoid for the selected profile, and do not use the phrase 'mixed relevance'. " +
     "A SafetyRating or a regulatory category such as Amber, Restricted Substance, Preservative, or Keratolytic is not by itself evidence of irritation or incompatibility with sensitive skin. " +
     "Restricted Substance is a regulatory classification only. " +
     "If you mention a restricted ingredient, say only that regulatory conditions or concentration limits may apply; do not turn that classification into a medical or personalised warning. " +
@@ -266,23 +219,24 @@ public class AiSummaryService
     "If a function list contains context-specific uses such as hair conditioning or oral care, do not mention those unless the Product signals line supports that product context. " +
 
     "Do not infer the product type, such as sunscreen, cleanser, or fragrance-based formula, unless the Product signals line explicitly supports it. " +
-    "If the Product signals line says the formula is likely a sunscreen or SPF product because it contains multiple UV filters, you may explain that as a likely cosmetic purpose. " +
-    "Known ingredients come from a curated database and can be described with more confidence. " +
-    "Ingredients marked 'not found in database' come from a general AI classifier; they are estimates, not verified facts. " +
-    "For those ingredients, a confidence wording is already provided, for example 'low confidence'. " +
-    "Use that wording exactly as given and do not make the ingredient sound more or less certain than that wording. " +
-    "If any unknown ingredients are provided, always mention them briefly, including that they were not found in the database and that the AI classifier result is unverified. " +
+    "If confirmed Annex VI UV filters are supplied, explain their mineral, organic, or organic particulate type without claiming an SPF value or exact protection level. " +
+    "Known ingredient roles are deterministic summaries of curated categories and possible CosIng functions. " +
+    "Unmatched ingredient names are intentionally not supplied because they may contain OCR errors. " +
+    "If the unmatched count is above zero, mention only the count and that those names could not be verified. " +
+    "Do not invent, reconstruct, quote, or classify any unmatched ingredient name. " +
 
     "Never claim the product is safe, effective, or suitable for a condition. " +
     "Do not invent any ingredient, effect, or fact that is not in the data.";
 
-        // The user message contains the facts for this product.
-        // Notice the wording: we are not asking the model to analyse from scratch.
-        // We are giving it our analysis and asking it to turn that into readable text.
+        var total = results.Results.Count + results.UnknownIngredients.Count;
+        var unknownShare = total == 0
+            ? 0
+            : (int)Math.Round(results.UnknownIngredients.Count * 100d / total);
+
         var userMessage =
             $"Product signals: {(productSignals.Any() ? string.Join("; ", productSignals) : "none")}.\n" +
-            $"Known ingredients (from database): {(known.Any() ? string.Join(", ", known) : "none")}.\n" +
-            $"Unknown ingredients (AI-classified): {(unknown.Any() ? string.Join("; ", unknown) : "none")}.\n" +
+            $"Verified ingredients and plain roles: {(known.Any() ? string.Join("; ", known) : "none")}.\n" +
+            $"Data coverage: {results.Results.Count} of {total} ingredients matched; {results.UnknownIngredients.Count} unmatched ({unknownShare}%). Raw unmatched names are not provided.\n" +
             $"Potential concerns (Avoid flags): {(concerns.Any() ? string.Join(", ", concerns) : "none")}.\n" +
             $"Beneficial profile signals: {(benefits.Any() ? string.Join("; ", benefits) : "none")}.\n" +
             $"Personalised interpretation rule: {(concerns.Any() ? "Avoid flags are present, so personalised concerns may be mentioned only for those listed ingredients." : "There are no Avoid flags. Do not say mixed relevance for the selected profile. Do not treat regulatory restrictions as personalised concerns.")}\n" +
@@ -296,8 +250,8 @@ public class AiSummaryService
         var signals = new List<string>();
 
         var uvFilters = results.Results
-            .Where(r => HasCategory(r, "UV Filter"))
-            .Select(r => r.InciName)
+            .Where(r => r.IsUvFilter)
+            .Select(r => $"{r.InciName} ({r.UvFilterType})")
             .ToList();
 
         var humectants = results.Results
@@ -310,9 +264,9 @@ public class AiSummaryService
             .Select(r => r.InciName)
             .ToList();
 
-        if (uvFilters.Count >= 3)
+        if (uvFilters.Count > 0)
         {
-            signals.Add($"Likely sunscreen/SPF product: {uvFilters.Count} UV filters identified ({string.Join(", ", uvFilters.Take(5))})");
+            signals.Add($"Confirmed Annex VI UV filters: {uvFilters.Count} identified ({string.Join(", ", uvFilters.Take(5))})");
         }
 
         if (humectants.Count > 0)
@@ -335,6 +289,125 @@ public class AiSummaryService
             .Any(c => string.Equals(c, category, StringComparison.OrdinalIgnoreCase));
     }
 
+    private static List<string> GetPlainRoles(IngredientResultDto result)
+    {
+        var roles = new List<string>();
+
+        if (HasCategory(result, "Humectants") || HasFunction(result, "HUMECTANT"))
+            roles.Add("moisture support");
+        if (HasCategory(result, "Emollients") ||
+            HasFunction(result, "SKIN CONDITIONING - EMOLLIENT") ||
+            HasFunction(result, "SKIN PROTECTING"))
+            roles.Add("softening or moisture-loss reduction");
+        if (HasFunction(result, "EMULSION STABILISING") ||
+            HasFunction(result, "VISCOSITY CONTROLLING") ||
+            HasFunction(result, "SURFACTANT - EMULSIFYING") ||
+            HasFunction(result, "GEL FORMING"))
+            roles.Add("texture or formula stability");
+        if (HasCategory(result, "Preservative"))
+            roles.Add("product preservation");
+        if (HasCategory(result, "Fragrance"))
+            roles.Add("fragrance");
+        if (result.IsUvFilter)
+            roles.Add($"confirmed {result.UvFilterType.ToLowerInvariant()} UV filter");
+
+        if (roles.Count == 0) roles.Add("other supporting cosmetic role");
+        return roles;
+    }
+
+    private static bool HasFunction(IngredientResultDto result, string function) =>
+        result.Function
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(value => string.Equals(value, function, StringComparison.OrdinalIgnoreCase));
+
+    private static bool ViolatesSafetyBoundary(string summary)
+    {
+        var prohibitedPhrases = new[]
+        {
+            "suitable for",
+            "suitable option",
+            "recommended for",
+            "designed to",
+            "beneficial for",
+            "eczema care",
+            "for eczema",
+            "for atopic dermatitis",
+            "treats ",
+            "treat ",
+            "heals ",
+            "cures ",
+            "manages ",
+            "improves symptoms"
+        };
+
+        return prohibitedPhrases.Any(phrase =>
+            summary.Contains(phrase, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ContradictsProfileFlags(string summary, AnalyseResponse results)
+    {
+        var hasAvoidFlags = results.Results
+            .Any(result => result.ConditionFlags.Any(flag => flag.FlagType == "Avoid"));
+
+        if (hasAvoidFlags)
+        {
+            if (summary.Contains(
+                "no ingredients were specifically flagged as avoid",
+                StringComparison.OrdinalIgnoreCase)
+                || summary.Contains("no avoid flags", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        else if (summary.Contains("mixed relevance", StringComparison.OrdinalIgnoreCase)
+            || summary.Contains("flagged as a potential concern", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return ContradictsBeneficialFlags(summary, results);
+    }
+
+    private static bool ContradictsBeneficialFlags(string summary, AnalyseResponse results)
+    {
+        var beneficialNames = results.Results
+            .Where(result => result.ConditionFlags.Any(flag => flag.FlagType == "Beneficial"))
+            .Select(result => result.InciName)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var beneficialPhrases = new[]
+        {
+            "flagged as beneficial",
+            "beneficial profile signal",
+            "profile-supporting signal",
+            "relevant to the selected profile"
+        };
+
+        var claimSentences = Regex
+            .Split(summary, @"(?<=[.!?])\s+")
+            .Where(sentence => beneficialPhrases.Any(phrase =>
+                sentence.Contains(phrase, StringComparison.OrdinalIgnoreCase)));
+
+        foreach (var sentence in claimSentences)
+        {
+            if (beneficialNames.Count == 0)
+            {
+                return true;
+            }
+
+            var mentionsUnflaggedIngredient = results.Results.Any(result =>
+                sentence.Contains(result.InciName, StringComparison.OrdinalIgnoreCase)
+                && !beneficialNames.Contains(result.InciName));
+
+            if (mentionsUnflaggedIngredient)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static string BuildFallbackSummary(AnalyseResponse results)
     {
         // This fallback is deterministic: it uses only our backend's own results.
@@ -348,18 +421,57 @@ public class AiSummaryService
             .Select(r => r.InciName)
             .ToList();
 
-        var productSignals = BuildProductSignals(results);
+        var uvFilters = results.Results.Where(result => result.IsUvFilter).ToList();
+        var emollients = results.Results
+            .Where(result => HasCategory(result, "Emollients"))
+            .Select(result => result.InciName)
+            .Take(5)
+            .ToList();
+        var humectants = results.Results
+            .Where(result => HasCategory(result, "Humectants") || HasFunction(result, "HUMECTANT"))
+            .Select(result => result.InciName)
+            .Take(5)
+            .ToList();
 
-        var summary =
-            $"Formula profile: {(productSignals.Any() ? string.Join("; ", productSignals) : "No strong product-type signal was detected from the available categories.")}\n" +
-            $"Main cosmetic roles: This product contains {total} ingredient(s): {known} found in the database and {unknown} not recognised.\n";
+        var paragraphs = new List<string>();
 
-        summary += concerns.Any()
-            ? $"Personalised notes: Potential concerns based on the selected profile: {string.Join(", ", concerns)}.\n"
-            : "Personalised notes: No specific Avoid flags were identified in the known ingredients for the selected profile.\n";
+        if (uvFilters.Count > 0)
+        {
+            var filterTypes = string.Join(", ", uvFilters
+                .Select(filter => filter.UvFilterType.ToLowerInvariant())
+                .Distinct());
+            paragraphs.Add(
+                $"The verified composition contains {uvFilters.Count} confirmed {filterTypes} UV filter" +
+                $"{(uvFilters.Count == 1 ? string.Empty : "s")}. This identifies filter ingredients, but the list alone cannot confirm the finished product's SPF or protection level.");
+        }
 
-        summary += "Data limitations: This is a preliminary cosmetic ingredient assessment based on available database matches and does not replace professional advice.";
+        if (emollients.Count > 0)
+        {
+            paragraphs.Add(
+                $"It also includes emollients such as {string.Join(", ", emollients)}, which are commonly used to soften the skin surface and reduce moisture loss.");
+        }
 
-        return summary;
+        if (humectants.Count > 0)
+        {
+            paragraphs.Add(
+                $"Humectants such as {string.Join(", ", humectants)} are commonly used to help attract or retain water in a cosmetic formula.");
+        }
+
+        if (paragraphs.Count == 0)
+        {
+            paragraphs.Add("No single dominant formula role could be confirmed from the available categories.");
+        }
+
+        paragraphs.Add(concerns.Any()
+            ? $"For the selected profile, {string.Join(", ", concerns)} " +
+              $"{(concerns.Count == 1 ? "was" : "were")} specifically flagged as a potential concern."
+            : "No verified ingredients were specifically flagged as Avoid for the selected profile.");
+
+        paragraphs.Add(
+            $"The analysis matched {known} of {total} ingredients" +
+            (unknown > 0 ? $", while {unknown} could not be verified" : string.Empty) +
+            ". Cosmetic functions describe possible roles; they do not reveal concentrations or prove suitability for a medical condition.");
+
+        return string.Join(" ", paragraphs);
     }
 }
