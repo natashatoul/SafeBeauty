@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using SafeBeauty.API.DTOs;
@@ -22,32 +23,84 @@ public class ProductsController : ControllerBase
     [HttpGet("barcode/{barcode}")]
     public async Task<ActionResult<ProductAnalyseResponse>> GetByBarcode(string barcode)
     {
-        if (string.IsNullOrWhiteSpace(barcode))
-        return BadRequest("Barcode cannot be empty.");
+        if (!BarcodeValidator.TryValidate(barcode, out var validationError))
+        {
+            return BadRequest(validationError);
+        }
 
-        var url = $"https://world.openbeautyfacts.org/api/v0/product/{barcode}.json";
+        var url = $"https://world.openbeautyfacts.org/api/v0/product/{Uri.EscapeDataString(barcode)}.json";
+        HttpResponseMessage response;
 
-        var response = await _httpClient.GetAsync(url);
+        try
+        {
+            response = await _httpClient.GetAsync(url);
+        }
+        catch (TaskCanceledException)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                "Open Beauty Facts timed out. Please try again later.");
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                "Open Beauty Facts is temporarily unavailable.");
+        }
 
-        if (!response.IsSuccessStatusCode)
-        return NotFound($"API error. Status: {response.StatusCode}");
+        using (response)
+        {
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return NotFound("Product not found in Open Beauty Facts database.");
+            }
 
-        var json = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
+                return StatusCode(StatusCodes.Status502BadGateway,
+                    $"Open Beauty Facts returned status {(int)response.StatusCode}.");
+            }
 
-        // Parse JSON using System.Text.Json (C# library)
+            var json = await response.Content.ReadAsStringAsync();
+
+            try
+            {
+                return await BuildProductResponse(barcode, json);
+            }
+            catch (JsonException)
+            {
+                return StatusCode(StatusCodes.Status502BadGateway,
+                    "Open Beauty Facts returned an invalid response.");
+            }
+        }
+    }
+
+    private async Task<ActionResult<ProductAnalyseResponse>> BuildProductResponse(
+        string barcode,
+        string json)
+    {
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
         if (!root.TryGetProperty("status", out var statusEl) ||
             !statusEl.TryGetInt32(out var status))
-        return StatusCode(StatusCodes.Status502BadGateway, "Unexpected response from Open Beauty Facts.");
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, "Unexpected response from Open Beauty Facts.");
+        }
 
         // Check if product was found (status 0 = not found, 1 - found)
         if (status == 0)
-        return NotFound("Product not found in Open Beauty Facts database.");
+        {
+            return NotFound("Product not found in Open Beauty Facts database.");
+        }
+
+        if (status != 1)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, "Unexpected response from Open Beauty Facts.");
+        }
 
         if (!root.TryGetProperty("product", out var product))
-        return StatusCode(StatusCodes.Status502BadGateway, "Product data is missing from Open Beauty Facts response.");
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, "Product data is missing from Open Beauty Facts response.");
+        }
 
         // Extract product name
         var productName = product.TryGetProperty("product_name", out var nameEl)
@@ -81,13 +134,12 @@ public class ProductsController : ControllerBase
 
         // Analyse extracted ingredients
         var analysis = await _analysisService.AnalyseAsync(ingredientNames);
-        return Ok(new ProductAnalyseResponse
+        return new ProductAnalyseResponse
         {
             ProductName = productName,
             Barcode = barcode,
             Analysis = analysis
-        });
-
+        };
     }
 
     private static IEnumerable<string> ExtractIngredientsFromText(JsonElement product)

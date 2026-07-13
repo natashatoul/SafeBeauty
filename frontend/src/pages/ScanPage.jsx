@@ -6,6 +6,7 @@ import {
   Html5QrcodeSupportedFormats
 } from 'html5-qrcode'
 import axios from 'axios'
+import { getBarcodeValidationError } from '../utils/barcodeValidation'
 
 // Base URL for the backend API, kept in one place so it only needs
 // to change in a single spot (e.g. when deploying to Azure later).
@@ -41,43 +42,100 @@ const stopScanner = async (scanner) => {
   scanner.clear()
 }
 
+const getCameraErrorMessage = (error) => {
+  const message = String(error).toLowerCase()
+
+  if (message.includes('notallowederror') || message.includes('permission')) {
+    return 'Camera access was denied. Allow camera access in your browser settings or enter the barcode manually.'
+  }
+
+  if (message.includes('notfounderror') || message.includes('devicesnotfounderror')) {
+    return 'No camera was found on this device. Enter the barcode or ingredient list manually.'
+  }
+
+  if (message.includes('notreadableerror') || message.includes('could not start video')) {
+    return 'The camera is unavailable or already in use by another app. Close the other app and try again.'
+  }
+
+  if (message.includes('overconstrainederror')) {
+    return 'The camera cannot use the requested settings. Try again or enter the barcode manually.'
+  }
+
+  return 'The scanner could not start. Check your camera and browser permissions, then try again.'
+}
+
 function ScanPage() {
   const [manualBarcode, setManualBarcode] = useState('')
-
-  // HOOK: useRef(null)
-  // Unlike useState, changing a ref's value does NOT trigger a re-render.
-  // Think of useState as a whiteboard everyone in the room can see —
-  // changing it updates what's displayed. useRef is more like a personal
-  // notebook in a drawer: you can read and write to it, but nothing on
-  // screen reacts when it changes.
-  // Here it's used to "remember" the scanner object across renders,
-  // without needing the component to redraw when it's created.
+  const [scannerStatus, setScannerStatus] = useState('starting')
+  const [scannerError, setScannerError] = useState('')
+  const [barcodeError, setBarcodeError] = useState('')
+  const [showScanHelp, setShowScanHelp] = useState(false)
+  const [scannerAttempt, setScannerAttempt] = useState(0)
+  const [isProcessing, setIsProcessing] = useState(false)
   const scannerRef = useRef(null)
-
-  // A second ref, used purely as a flag: "has the scanner already
-  // been started?" Starts as false. This exists to guard against
-  // accidentally starting the camera twice.
-  const isInitialized = useRef(false)
+  const isProcessingRef = useRef(false)
+  const scanHelpTimeoutRef = useRef(null)
 
   const navigate = useNavigate()
 
   const analyseBarcode = useCallback(async (barcode) => {
     try {
-      // Send a GET request to the backend with the scanned or typed barcode.
-      // axios.get() gives back the data directly in response.data
-      // (fetch would need an extra response.json() step for the same thing).
-      const response = await axios.get(`${API_URL}/products/barcode/${barcode}`)
-
-      // Same pattern as ManualInputPage: navigate to /results,
-      // carrying the analysis data via route state.
+      const response = await axios.get(`${API_URL}/products/barcode/${encodeURIComponent(barcode)}`)
       navigate('/results', { state: { results: response.data.analysis } })
-    } catch {
-      // If the product isn't found (or the request fails for any
-      // other reason), fall back to manual ingredient entry.
-      alert('Product not found. Try entering ingredients manually.')
-      navigate('/manual')
+      return null
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        alert('Product not found. Try entering ingredients manually.')
+        navigate('/manual')
+        return null
+      }
+
+      return 'The product service is temporarily unavailable. Please try again.'
     }
   }, [navigate])
+
+  const processBarcode = useCallback(async (barcode) => {
+    const validationError = getBarcodeValidationError(barcode)
+    if (validationError) {
+      setBarcodeError(validationError)
+      return
+    }
+
+    if (isProcessingRef.current) return
+    isProcessingRef.current = true
+    setIsProcessing(true)
+    setBarcodeError('')
+    setScannerError('')
+    setScannerStatus('processing')
+    clearTimeout(scanHelpTimeoutRef.current)
+
+    try {
+      if (scannerRef.current) {
+        await stopScanner(scannerRef.current)
+      }
+
+      const requestError = await analyseBarcode(barcode)
+      if (requestError) {
+        setScannerError(requestError)
+        setScannerStatus('error')
+      }
+    } catch (error) {
+      console.error('Failed to process barcode:', error)
+      setScannerError('The barcode could not be processed. Please try again.')
+      setScannerStatus('error')
+    } finally {
+      isProcessingRef.current = false
+      setIsProcessing(false)
+    }
+  }, [analyseBarcode])
+
+  const retryScanner = () => {
+    if (isProcessingRef.current) return
+    setScannerError('')
+    setBarcodeError('')
+    setShowScanHelp(false)
+    setScannerAttempt((attempt) => attempt + 1)
+  }
 
   const handleManualSubmit = async (event) => {
     event.preventDefault()
@@ -85,40 +143,29 @@ function ScanPage() {
     const barcode = manualBarcode.trim()
     if (barcode === '') return
 
-    await analyseBarcode(barcode)
+    await processBarcode(barcode)
   }
 
-  // HOOK: useEffect(...)
-  // Runs right after the component first renders.
-  // This is where the camera gets started — a side effect outside the
-  // normal "get data, show data" flow of rendering.
   useEffect(() => {
-    // Guard clause: if the scanner has already been started, stop here
-    // and do nothing. This matters because React's StrictMode (used in
-    // development only) deliberately runs every effect, cleans it up,
-    // then runs it again — as a way of catching effects that don't
-    // clean up properly. Without this guard, the camera could
-    // theoretically be asked to start twice in quick succession.
-    if (isInitialized.current) return
-    isInitialized.current = true
+    let disposed = false
+    let startSettled = false
+    setScannerStatus('starting')
+    setScannerError('')
 
-    // Creates a new scanner instance. 'reader' is the id of the <div>
-    // below — the library will inject the camera video feed directly
-    // into that element, bypassing normal React rendering.
     const html5Qrcode = new Html5Qrcode('reader', {
       formatsToSupport: BARCODE_FORMATS,
       experimentalFeatures: {
         useBarCodeDetectorIfSupported: true
       }
     })
+    scannerRef.current = html5Qrcode
 
-    // .start() begins the camera and barcode scanning. It takes 3 arguments:
-    html5Qrcode.start(
-      // 1) Camera config: use the back camera (better for scanning
-      //    a barcode on a physical product than the front camera)
+    scanHelpTimeoutRef.current = setTimeout(() => {
+      if (!disposed && !isProcessingRef.current) setShowScanHelp(true)
+    }, 30000)
+
+    const startPromise = html5Qrcode.start(
       { facingMode: 'environment' },
-      // 2) Scan config: 15 frames per second, and a wide scan box on
-      //    screen showing where to line up the barcode
       {
         fps: 15,
         qrbox: getBarcodeScanBox,
@@ -128,69 +175,108 @@ function ScanPage() {
           height: { ideal: 1080 }
         }
       },
-      // 3) Callback function — runs automatically once a barcode is
-      //    successfully detected. `barcode` is the decoded value (a string).
-      //    Marked `async` because it needs to `await` two things below:
-      //    stopping the camera, and the server request.
-      async (barcode) => {
-        // Stop the camera as soon as a barcode is found.
-        // `await` ensures we don't move on until it's actually stopped.
-        await stopScanner(html5Qrcode)
+      (barcode) => processBarcode(barcode)
+    )
 
-        await analyseBarcode(barcode)
-      }
-    ).catch((error) => {
-      // If starting the camera itself fails (e.g. permission denied,
-      // or the camera is already in use by another app), this catches
-      // that failure. Without this, the page would just sit there
-      // blank with no explanation of what went wrong.
-      console.error('Failed to start scanner:', error)
-    })
+    startPromise
+      .then(() => {
+        startSettled = true
+        if (!disposed) setScannerStatus('active')
+      })
+      .catch((error) => {
+        startSettled = true
+        if (disposed) return
+        console.error('Failed to start scanner:', error)
+        setScannerError(getCameraErrorMessage(error))
+        setScannerStatus('error')
+        setShowScanHelp(true)
+      })
 
-    // Store the scanner instance in the ref, so it can be accessed
-    // later from outside this function (e.g. in the cleanup below).
-    scannerRef.current = html5Qrcode
-
-    // CLEANUP FUNCTION: the function returned from useEffect.
-    // React automatically calls this when the component is about to
-    // disappear from the screen (e.g. the user navigates away from
-    // this page), or — in development, under StrictMode — right after
-    // the first run, as part of its double-invoke check.
     return () => {
-      // Stop the camera. .catch(() => {}) quietly ignores any error
-      // (e.g. if it was already stopped), so a minor cleanup issue
-      // doesn't crash the app.
-      stopScanner(html5Qrcode).catch(() => {})
+      disposed = true
+      clearTimeout(scanHelpTimeoutRef.current)
+      if (scannerRef.current === html5Qrcode) scannerRef.current = null
 
-      // Reset the flag when this effect is cleaned up. This is the
-      // important fix: without resetting it here, isInitialized would
-      // stay `true` forever after StrictMode's first cleanup, and the
-      // SECOND, real run of the effect would be blocked by the guard
-      // clause above — leaving the camera never actually started.
-      isInitialized.current = false
+      // start() cannot be cancelled while the permission prompt is open.
+      // Waiting for it to settle guarantees that a late camera stream is closed.
+      const state = html5Qrcode.getState()
+      if (
+        state === Html5QrcodeScannerState.SCANNING ||
+        state === Html5QrcodeScannerState.PAUSED
+      ) {
+        stopScanner(html5Qrcode).catch(() => {})
+      } else {
+        try {
+          html5Qrcode.clear()
+        } catch {
+          // The reader may already have been cleared after a successful scan.
+        }
+
+        if (!startSettled) {
+          startPromise
+            .then(() => stopScanner(html5Qrcode))
+            .catch(() => {})
+        }
+      }
     }
-  }, [analyseBarcode])
+  }, [processBarcode, scannerAttempt])
+
+  const scannerStatusText = {
+    starting: 'Starting camera…',
+    active: 'Scanner active — looking for a barcode',
+    processing: 'Barcode detected — checking product…',
+    error: 'Scanner needs attention'
+  }[scannerStatus]
 
   return (
-    <div>
+    <div className="scan-page">
       <h2>Scan Barcode</h2>
       <p>Point your camera at the product barcode.</p>
-      {/* This div looks empty, but html5-qrcode injects the camera feed
-          directly into it, matched by this id="reader" */}
-      <div id="reader" style={{ width: '300px', minHeight: '300px' }} />
 
-      <form onSubmit={handleManualSubmit}>
+      <p className={`scanner-status ${scannerStatus}`} role="status" aria-live="polite">
+        {scannerStatusText}
+      </p>
+
+      <div id="reader" className="scanner-reader" />
+
+      {scannerError && (
+        <div className="scanner-message error" role="alert">
+          <p>{scannerError}</p>
+          <button type="button" onClick={retryScanner} disabled={isProcessing}>
+            Try camera again
+          </button>
+        </div>
+      )}
+
+      <div className={`scan-guidance${showScanHelp ? ' highlighted' : ''}`}>
+        <strong>{showScanHelp ? 'Still not scanning?' : 'For a faster scan'}</strong>
+        <ul>
+          <li>Hold the barcode horizontally inside the frame.</li>
+          <li>Move the camera slowly closer or farther away.</li>
+          <li>Avoid glare and keep the full barcode visible.</li>
+        </ul>
+        {showScanHelp && <p>You can enter the barcode below or use “Enter list” in the menu.</p>}
+      </div>
+
+      <form className="barcode-form" onSubmit={handleManualSubmit} noValidate>
         <label htmlFor="manual-barcode">Enter barcode manually</label>
-        <br />
         <input
           id="manual-barcode"
           type="text"
+          inputMode="numeric"
+          autoComplete="off"
           value={manualBarcode}
-          onChange={(event) => setManualBarcode(event.target.value)}
+          onChange={(event) => {
+            setManualBarcode(event.target.value)
+            setBarcodeError('')
+          }}
           placeholder="e.g. 42345275"
+          aria-invalid={barcodeError ? 'true' : 'false'}
+          aria-describedby={barcodeError ? 'barcode-error' : undefined}
         />
-        <button type="submit" disabled={manualBarcode.trim() === ''}>
-          Analyse Barcode
+        {barcodeError && <p id="barcode-error" className="field-error">{barcodeError}</p>}
+        <button type="submit" disabled={isProcessing || manualBarcode.trim() === ''}>
+          {isProcessing ? 'Checking…' : 'Analyse Barcode'}
         </button>
       </form>
     </div>

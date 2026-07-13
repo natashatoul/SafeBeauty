@@ -144,6 +144,138 @@ button {
   width: min(100%, 1040px);
 }
 
+.scan-page {
+  width: min(100%, 720px);
+}
+
+.scanner-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 16px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.scanner-status::before {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--amber);
+  content: "";
+}
+
+.scanner-status.active::before {
+  background: var(--success);
+  box-shadow: 0 0 0 5px var(--success-soft);
+}
+
+.scanner-status.error::before {
+  background: #d84a4a;
+}
+
+.scanner-reader {
+  width: min(100%, 520px);
+  min-height: 300px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #171a17;
+}
+
+.scanner-message,
+.scan-guidance {
+  width: min(100%, 520px);
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 10px;
+}
+
+.scanner-message.error {
+  border: 1px solid rgba(216, 74, 74, 0.4);
+  background: #fff1f1;
+}
+
+.scanner-message p,
+.scan-guidance p {
+  margin: 0 0 12px;
+}
+
+.scanner-message button,
+.barcode-form button {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--green);
+  color: white;
+  font-weight: 700;
+}
+
+.scanner-message button:disabled,
+.barcode-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.scan-guidance {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid transparent;
+}
+
+.scan-guidance.highlighted {
+  color: var(--text);
+  background: var(--amber-soft);
+  border-color: rgba(201, 121, 0, 0.3);
+}
+
+.scan-guidance ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  line-height: 1.55;
+}
+
+.scan-guidance.highlighted ul {
+  margin-bottom: 12px;
+}
+
+.barcode-form {
+  width: min(100%, 520px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.barcode-form label,
+.field-error {
+  grid-column: 1 / -1;
+}
+
+.barcode-form label {
+  font-weight: 700;
+}
+
+.barcode-form input {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+}
+
+.barcode-form input[aria-invalid="true"] {
+  border-color: #d84a4a;
+}
+
+.field-error {
+  margin: 0;
+  color: #a52f2f;
+  font-size: 0.9rem;
+}
+
 .hero-section {
   max-width: 430px;
   margin-bottom: 44px;

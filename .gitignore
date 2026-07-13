@@ -52,6 +52,7 @@ desktop.ini
 
 # Claude Code
 .agents
+.codex
 
 # Reference data files
 backend/data/*.pdf
