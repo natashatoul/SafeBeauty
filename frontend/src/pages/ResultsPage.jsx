@@ -200,10 +200,21 @@ function ResultsPage() {
         {regulatoryOnly.length > 0 && (
           <div className="regulatory-note">
             <h3>Regulatory notes</h3>
-            <p>These are legal use conditions or restrictions, not automatically personal warnings.</p>
-            {regulatoryOnly.map((ingredient) => (
-              <ProfileIngredient key={`regulatory-${ingredient.inciName}`} ingredient={ingredient} />
-            ))}
+            <p>
+              These ingredients have recorded regulatory use conditions or restrictions. This does
+              not automatically mean that the finished product is unsafe; applicability may depend
+              on product type and concentration.
+            </p>
+            <ul className="regulatory-ingredient-list">
+              {regulatoryOnly.map((ingredient) => (
+                <li
+                  className="ingredient-chip ingredient-chip--caution"
+                  key={`regulatory-${ingredient.inciName}`}
+                >
+                  {ingredient.inciName}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </section>

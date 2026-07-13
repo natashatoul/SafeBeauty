@@ -727,6 +727,15 @@ button {
   margin-top: 6px;
 }
 
+.regulatory-ingredient-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 16px 0 0;
+  list-style: none;
+}
+
 .formula-card {
   padding: 22px 24px;
 }
