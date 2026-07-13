@@ -7,10 +7,12 @@ import {
 } from 'html5-qrcode'
 import axios from 'axios'
 import { getBarcodeValidationError } from '../utils/barcodeValidation'
+import { useProfile } from '../context/ProfileContext'
 
 // Base URL for the backend API, kept in one place so it only needs
 // to change in a single spot (e.g. when deploying to Azure later).
 const API_URL = import.meta.env.VITE_API_URL || '/api'
+const EMPTY_CONDITIONS = []
 
 const BARCODE_FORMATS = [
   Html5QrcodeSupportedFormats.EAN_13,
@@ -77,11 +79,28 @@ function ScanPage() {
   const scanHelpTimeoutRef = useRef(null)
 
   const navigate = useNavigate()
+  const { profile } = useProfile()
+  const selectedConditions = profile.conditions ?? EMPTY_CONDITIONS
 
   const analyseBarcode = useCallback(async (barcode) => {
     try {
-      const response = await axios.get(`${API_URL}/products/barcode/${encodeURIComponent(barcode)}`)
-      navigate('/results', { state: { results: response.data.analysis } })
+      const params = new URLSearchParams()
+      selectedConditions.forEach((condition) => params.append('userConditions', condition))
+      const response = await axios.get(
+        `${API_URL}/products/barcode/${encodeURIComponent(barcode)}`,
+        { params }
+      )
+      navigate('/results', {
+        state: {
+          results: response.data.analysis,
+          analysisContext: {
+            source: 'Open Beauty Facts',
+            productName: response.data.productName,
+            barcode: response.data.barcode,
+            selectedConditions
+          }
+        }
+      })
       return null
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -92,7 +111,7 @@ function ScanPage() {
 
       return 'The product service is temporarily unavailable. Please try again.'
     }
-  }, [navigate])
+  }, [navigate, selectedConditions])
 
   const processBarcode = useCallback(async (barcode) => {
     const validationError = getBarcodeValidationError(barcode)
@@ -242,7 +261,7 @@ function ScanPage() {
       {scannerError && (
         <div className="scanner-message error" role="alert">
           <p>{scannerError}</p>
-          <button type="button" onClick={retryScanner} disabled={isProcessing}>
+          <button type="button" className="primary-button" onClick={retryScanner} disabled={isProcessing}>
             Try camera again
           </button>
         </div>
@@ -275,7 +294,7 @@ function ScanPage() {
           aria-describedby={barcodeError ? 'barcode-error' : undefined}
         />
         {barcodeError && <p id="barcode-error" className="field-error">{barcodeError}</p>}
-        <button type="submit" disabled={isProcessing || manualBarcode.trim() === ''}>
+        <button type="submit" className="primary-button" disabled={isProcessing || manualBarcode.trim() === ''}>
           {isProcessing ? 'Checking…' : 'Analyse Barcode'}
         </button>
       </form>

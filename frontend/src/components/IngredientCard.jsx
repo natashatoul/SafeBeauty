@@ -60,6 +60,22 @@ function getDisplayCategories(categoryText = '') {
     .join(', ')
 }
 
+function formatConditionName(condition = '') {
+  return condition.replace(/([a-z])([A-Z])/g, '$1 $2')
+}
+
+function getProfileRuleExplanation(flag) {
+  if (flag.flagType === 'Beneficial') {
+    return 'Its broader cosmetic category is marked as potentially relevant in the profile rule set. This does not prove that the ingredient or finished product benefits the condition.'
+  }
+
+  if (flag.flagType === 'Avoid') {
+    return 'Its broader cosmetic category is flagged as a potential concern for this profile.'
+  }
+
+  return 'Its broader cosmetic category has a caution rule for this profile.'
+}
+
 // IngredientCard - UI component it is a pattern of a card and ingredient - 
 // it/s object with data(name. rating. categoria)
 function IngredientCard({ ingredient }) { // it is a component and it is like custom HTML. ingredient - it is a props
@@ -88,7 +104,13 @@ function IngredientCard({ ingredient }) { // it is a component and it is like cu
                 // color has nothing to do with this line — color is only used once, for the border of the whole card
                 <ul>
                     {ingredient.conditionFlags.map((flag, i) => (
-                        <li key={i}>{flag.condition}: {flag.flagType} — {flag.notes}</li>
+                        <li key={i}>
+                            <strong>{formatConditionName(flag.condition)}: {flag.flagType}</strong>
+                            <p>{getProfileRuleExplanation(flag)}</p>
+                            {flag.evidenceSource && (
+                                <small className="rule-source">Rule source: {flag.evidenceSource}</small>
+                            )}
+                        </li>
                     ))}
                 </ul>
             )}

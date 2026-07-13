@@ -1,296 +1,298 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import IngredientCard from '../components/IngredientCard'
 import UnknownIngredientCard from '../components/UnknownIngredientCard'
+import {
+  getFormulaGroups,
+  getProfileSignals,
+  getUvOverview
+} from '../utils/formulaInterpretation'
 
 const RATING_ORDER = ['Red', 'Amber', 'Green', 'Grey']
 
 const RATING_TITLES = {
-  Red: 'Red — avoid',
-  Amber: 'Amber — caution',
-  Green: 'Green — regulator-approved',
-  Grey: 'Grey — no regulatory rating'
+  Red: 'Avoid or prohibited use',
+  Amber: 'Conditions or cautions apply',
+  Green: 'Permitted use identified',
+  Grey: 'No specific restriction identified'
 }
 
-const IMPORTANT_CATEGORY_EXCLUSIONS = new Set(['EU Glossary Ingredient'])
+const getFlags = (ingredient, type) =>
+  ingredient.conditionFlags?.filter((flag) => flag.flagType === type) ?? []
 
-const FORMULA_ROLES = [
-  {
-    title: 'Hydration helpers',
-    technical: 'Humectants',
-    description: 'Help attract and hold water in the skin.',
-    match: (item) => hasCategory(item, 'Humectants')
-  },
-  {
-    title: 'Skin-softening ingredients',
-    technical: 'Emollients',
-    description: 'Help soften and smooth the skin surface.',
-    match: (item) => hasCategory(item, 'Emollients')
-  },
-  {
-    title: 'UV protection filters',
-    technical: 'UV Filter',
-    description: 'Filter UV radiation and are commonly used in SPF products.',
-    match: (item) => hasCategory(item, 'UV Filter')
-  },
-  {
-    title: 'Preservation system',
-    technical: 'Preservatives',
-    description: 'Help keep the product stable and reduce microbial growth.',
-    match: (item) => hasCategory(item, 'Preservative')
-  },
-  {
-    title: 'Fragrance',
-    technical: 'Fragrance',
-    description: 'Added for scent; may matter for fragrance-sensitive users.',
-    match: (item) => hasCategory(item, 'Fragrance')
-  },
-  {
-    title: 'Regulatory notes',
-    technical: 'Restricted substances',
-    description: 'Ingredients with specific regulatory conditions or concentration limits.',
-    match: (item) => hasCategory(item, 'Restricted Substance') || item.safetyRating === 'Red'
-  }
-]
+const getIngredientChipTone = (ingredient) => {
+  const flags = ingredient.conditionFlags ?? []
 
-function splitCategories(categoryText = '') {
-  return categoryText
-    .split(',')
-    .map((category) => category.trim())
-    .filter(Boolean)
+  if (ingredient.safetyRating === 'Red') return 'red'
+  if (ingredient.safetyRating === 'Amber'
+    || flags.some((flag) => flag.flagType === 'Avoid' || flag.flagType === 'Caution')) return 'caution'
+  if (flags.some((flag) => flag.flagType === 'Beneficial')) return 'beneficial'
+
+  return 'neutral'
 }
 
-function countBy(items, getKey) {
-  return items.reduce((counts, item) => {
-    const key = getKey(item)
-    if (!key) return counts
-    counts[key] = (counts[key] || 0) + 1
-    return counts
-  }, {})
-}
+const uniqueIngredients = (ingredients) => ingredients.filter((ingredient, index, all) =>
+  all.findIndex((other) => other.inciName === ingredient.inciName) === index)
 
-function getTopCategories(items) {
-  const counts = {}
+const formatConditionName = (condition) => condition.replace(/([a-z])([A-Z])/g, '$1 $2')
 
-  items.forEach((item) => {
-    splitCategories(item.category)
-      .filter((category) => !IMPORTANT_CATEGORY_EXCLUSIONS.has(category))
-      .forEach((category) => {
-        counts[category] = (counts[category] || 0) + 1
-      })
-  })
+function ProfileIngredient({ ingredient, flagType }) {
+  const flags = flagType ? getFlags(ingredient, flagType) : ingredient.conditionFlags ?? []
 
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-}
-
-function getFormulaRoles(items) {
-  return FORMULA_ROLES
-    .map((role) => ({
-      ...role,
-      ingredients: items.filter(role.match)
-    }))
-    .filter((role) => role.ingredients.length > 0)
-}
-
-function hasCategory(item, categoryName) {
-  return splitCategories(item.category).includes(categoryName)
-}
-
-function detectProductSignals(items) {
-  const uvFilters = items.filter((item) => hasCategory(item, 'UV Filter'))
-  const humectants = items.filter((item) => hasCategory(item, 'Humectants'))
-  const emollients = items.filter((item) => hasCategory(item, 'Emollients'))
-  const preservatives = items.filter((item) => hasCategory(item, 'Preservative'))
-  const fragrance = items.filter((item) => hasCategory(item, 'Fragrance'))
-
-  const signals = []
-
-  if (uvFilters.length >= 3) {
-    signals.push({
-      title: 'Likely sunscreen / SPF product',
-      text: `${uvFilters.length} UV filters were identified, so the ingredient profile strongly suggests sun protection.`
-    })
-  }
-
-  if (humectants.length > 0) {
-    signals.push({
-      title: 'Hydration support',
-      text: `${humectants.length} humectant ingredient(s) may help attract or hold water in the formula.`
-    })
-  }
-
-  if (emollients.length > 0) {
-    signals.push({
-      title: 'Skin-conditioning base',
-      text: `${emollients.length} emollient ingredient(s) suggest a smoothing or moisturising cosmetic base.`
-    })
-  }
-
-  if (preservatives.length > 0) {
-    signals.push({
-      title: 'Preserved formula',
-      text: `${preservatives.length} preservative ingredient(s) were found.`
-    })
-  }
-
-  if (fragrance.length > 0) {
-    signals.push({
-      title: 'Fragrance present',
-      text: 'Fragrance/parfum appears in the ingredient list and may matter for sensitive profiles.'
-    })
-  }
-
-  return signals.length > 0
-    ? signals
-    : [{ title: 'General cosmetic formula', text: 'No strong product-type signal was detected from the available categories.' }]
-}
-
-function getPriorityIngredients(grouped, unknownIngredients) {
-  const avoidFlagged = [...grouped.Red, ...grouped.Amber, ...grouped.Grey, ...grouped.Green]
-    .filter((item) => item.conditionFlags?.some((flag) => flag.flagType === 'Avoid'))
-
-  const regulatoryConcerns = [...grouped.Red, ...grouped.Amber]
-
-  return [
-    ...avoidFlagged,
-    ...regulatoryConcerns
-  ]
-    .filter((item, index, all) => all.findIndex((other) => other.inciName === item.inciName) === index)
-    .slice(0, 5)
-    .concat(unknownIngredients.slice(0, 2).map((item) => ({
-      inciName: item.name,
-      safetyRating: 'Unknown',
-      category: 'Not found in database',
-      function: item.aiLabel ? `AI estimate: ${item.aiLabel}` : '',
-      conditionFlags: []
-    })))
+  return (
+    <article className="profile-ingredient">
+      <strong>{ingredient.inciName}</strong>
+      {flags.map((flag, index) => (
+        <p key={`${ingredient.inciName}-${flag.condition}-${index}`}>
+          <span>{flag.condition}</span> — {flag.flagType === 'Beneficial'
+            ? 'Its broader cosmetic category is marked as potentially relevant in the profile rule set. This does not prove that the ingredient or finished product benefits the condition.'
+            : flag.notes}
+          {flag.evidenceSource && (
+            <small className="rule-source">Rule source: {flag.evidenceSource}.</small>
+          )}
+        </p>
+      ))}
+      {!flagType && flags.length === 0 && (
+        <p>A regulatory restriction or condition is recorded for this ingredient.</p>
+      )}
+    </article>
+  )
 }
 
 function ResultsPage() {
   const { state } = useLocation()
   const navigate = useNavigate()
   const results = state?.results
+  const context = state?.analysisContext ?? {}
 
   if (!results) {
     return (
       <div>
         <p>No results found.</p>
-        <button onClick={() => navigate('/')}>Go Home</button>
+        <button type="button" className="secondary-button" onClick={() => navigate('/')}>Go Home</button>
       </div>
     )
   }
 
-  const grouped = { Red: [], Amber: [], Green: [], Grey: [] }
-
-  results.results.forEach((item) => {
-    if (grouped[item.safetyRating]) {
-      grouped[item.safetyRating].push(item)
-    } else {
-      grouped.Grey.push(item)
+  const openProfile = () => navigate('/profile', {
+    state: {
+      returnToResults: {
+        results,
+        analysisContext: context
+      }
     }
   })
 
-  const ratingCounts = countBy(results.results, (item) => item.safetyRating)
-  const totalKnown = results.results.length
-  const totalUnknown = results.unknownIngredients.length
+  const knownIngredients = results.results ?? []
+  const unknownIngredients = results.unknownIngredients ?? []
+  const grouped = { Red: [], Amber: [], Green: [], Grey: [] }
+
+  knownIngredients.forEach((item) => {
+    const rating = grouped[item.safetyRating] ? item.safetyRating : 'Grey'
+    grouped[rating].push(item)
+  })
+
+  const totalKnown = knownIngredients.length
+  const totalUnknown = unknownIngredients.length
   const totalIngredients = totalKnown + totalUnknown
-  const productSignals = detectProductSignals(results.results)
-  const priorityIngredients = getPriorityIngredients(grouped, results.unknownIngredients)
-  const formulaRoles = getFormulaRoles(results.results)
+  const coverage = totalIngredients > 0 ? Math.round((totalKnown / totalIngredients) * 100) : 0
+  const uncertainInput = totalIngredients > 0 && totalUnknown / totalIngredients >= 0.25
+  const formulaGroups = getFormulaGroups(knownIngredients)
+  const profileSignals = getProfileSignals(knownIngredients)
+  const uvOverview = getUvOverview(knownIngredients)
+  const selectedConditions = context.selectedConditions ?? []
+  const regulatoryOnly = uniqueIngredients(profileSignals.regulatory.filter((ingredient) =>
+    !profileSignals.avoid.some((avoidIngredient) => avoidIngredient.inciName === ingredient.inciName)))
 
   return (
     <div className="results-page">
       <div className="results-header">
         <div>
-          <p className="eyebrow">Analysis Results</p>
-          <h1>Product overview</h1>
+          <p className="eyebrow">Ingredient analysis</p>
+          <h1>{context.productName || 'Your formula overview'}</h1>
+          <div className="results-context">
+            <span>Source: {context.source || 'Ingredient analysis'}</span>
+            {context.barcode && <span>Barcode: {context.barcode}</span>}
+          </div>
         </div>
         <button className="secondary-button" onClick={() => navigate('/')}>
-          Analyse another product
+          Analyse another formula
         </button>
       </div>
 
+      {uncertainInput && (
+        <section className="quality-banner" role="alert">
+          <div>
+            <strong>Please check the ingredient list</strong>
+            <p>
+              {totalUnknown} of {totalIngredients} entries could not be verified. The source may be
+              incomplete or contain OCR/parsing errors, so the interpretation may miss important details.
+            </p>
+          </div>
+          {context.source !== 'Manual input' && (
+            <button type="button" className="secondary-button" onClick={() => navigate('/manual')}>
+              Enter ingredients manually
+            </button>
+          )}
+        </section>
+      )}
+
       {results.aiSummary && (
         <section className="insight-card">
-          <span className="section-label">AI summary</span>
+          <h2 className="section-label">AI formula interpretation</h2>
           <p>{results.aiSummary}</p>
+          <small>
+            * Generated from verified ingredient matches and profile flags. It supports understanding,
+            but is not a medical diagnosis or a substitute for professional advice.
+          </small>
         </section>
       )}
 
       <section className="summary-grid">
         <article className="summary-card">
-          <span className="section-label">Ingredient coverage</span>
-          <strong>{totalIngredients}</strong>
-          <p>{totalKnown} found in database · {totalUnknown} unknown</p>
+          <h2 className="section-label">Data coverage</h2>
+          <strong>{coverage}%</strong>
+          <p>{totalKnown} verified · {totalUnknown} not matched · {totalIngredients} total</p>
         </article>
-
         <article className="summary-card">
-          <span className="section-label">Ratings</span>
-          <div className="rating-pills">
-            {RATING_ORDER.map((rating) => (
-              <span key={rating} className={`rating-pill ${rating.toLowerCase()}`}>
-                {rating} {ratingCounts[rating] || 0}
-              </span>
-            ))}
-          </div>
+          <h2 className="section-label">Personalisation</h2>
+          <strong>{selectedConditions.length}</strong>
+          <p>
+            {selectedConditions.length > 0
+              ? `Profile conditions used: ${selectedConditions.map(formatConditionName).join(', ')}`
+              : 'No profile conditions were selected for this analysis.'}
+          </p>
+          <button type="button" className="text-button" onClick={openProfile}>
+            {selectedConditions.length > 0 ? 'Edit profile' : 'Set up profile'}
+          </button>
         </article>
       </section>
 
       <section className="results-section">
-        <h2>What this formula seems to be doing</h2>
-        <div className="signal-grid">
-          {productSignals.map((signal) => (
-            <article className="signal-card" key={signal.title}>
-              <h3>{signal.title}</h3>
-              <p>{signal.text}</p>
+        <h2>What matters for your profile</h2>
+        {selectedConditions.length === 0 ? (
+          <div className="empty-guidance">
+            <p>Add conditions or preferences to highlight ingredients that may be especially relevant to you.</p>
+            <button type="button" className="secondary-button" onClick={openProfile}>
+              Set up profile
+            </button>
+          </div>
+        ) : (
+          <div className="profile-grid">
+            <article className="profile-card concern">
+              <h3 className="section-label">Worth avoiding for your profile</h3>
+              {profileSignals.avoid.length > 0
+                ? profileSignals.avoid.map((ingredient) => (
+                  <ProfileIngredient key={`avoid-${ingredient.inciName}`} ingredient={ingredient} flagType="Avoid" />
+                ))
+                : <p>No verified “Avoid” flags were found for your selected conditions.</p>}
             </article>
-          ))}
-        </div>
+            <article className="profile-card supportive">
+              <h3 className="section-label">Potentially relevant formula roles</h3>
+              {profileSignals.beneficial.length > 0
+                ? profileSignals.beneficial.map((ingredient) => (
+                  <ProfileIngredient key={`beneficial-${ingredient.inciName}`} ingredient={ingredient} flagType="Beneficial" />
+                ))
+                : <p>No specifically beneficial profile matches were identified.</p>}
+            </article>
+          </div>
+        )}
+
+        {regulatoryOnly.length > 0 && (
+          <div className="regulatory-note">
+            <h3>Regulatory notes</h3>
+            <p>These are legal use conditions or restrictions, not automatically personal warnings.</p>
+            {regulatoryOnly.map((ingredient) => (
+              <ProfileIngredient key={`regulatory-${ingredient.inciName}`} ingredient={ingredient} />
+            ))}
+          </div>
+        )}
       </section>
 
-      {formulaRoles.length > 0 && (
+      {formulaGroups.length > 0 && (
         <section className="results-section">
-          <h2>Formula roles</h2>
-          <div className="role-grid">
-            {formulaRoles.map((role) => (
-              <article className="role-card" key={role.title}>
-                <div>
-                  <h3>{role.title}</h3>
-                  <span>{role.technical}</span>
-                  <p>{role.description}</p>
+          <h2>How the formula is built</h2>
+          <p className="section-intro">Ingredients are grouped by a practical role, with the technical term kept for reference.</p>
+          <div className="ingredient-flag-legend" aria-label="Ingredient highlight colour key">
+            <span className="ingredient-chip ingredient-chip--red">Regulatory concern</span>
+            <span className="ingredient-chip ingredient-chip--caution">Avoid or caution</span>
+            <span className="ingredient-chip ingredient-chip--beneficial">Profile relevance</span>
+            <span className="ingredient-chip ingredient-chip--neutral">No highlighted flag</span>
+          </div>
+          <div className="formula-grid">
+            {formulaGroups.map((group) => (
+              <article className="formula-card" key={group.id}>
+                <div className="formula-card-heading">
+                  <div>
+                    <h3>{group.title}</h3>
+                    <span>{group.technical}</span>
+                  </div>
+                  <strong>{group.ingredients.length}</strong>
                 </div>
-                <ul>
-                  {role.ingredients.map((ingredient) => (
-                    <li key={`${role.title}-${ingredient.inciName}`}>{ingredient.inciName}</li>
+                <p>{group.description}</p>
+                <div className="ingredient-chips">
+                  {group.ingredients.slice(0, 5).map((ingredient) => (
+                    <span
+                      className={`ingredient-chip ingredient-chip--${getIngredientChipTone(ingredient)}`}
+                      key={`${group.id}-${ingredient.inciName}`}
+                    >
+                      {ingredient.inciName}
+                    </span>
                   ))}
-                </ul>
+                  {group.ingredients.length > 5 && (
+                    <span className="ingredient-chip ingredient-chip--neutral">
+                      +{group.ingredients.length - 5} more
+                    </span>
+                  )}
+                </div>
               </article>
             ))}
           </div>
         </section>
       )}
 
-      {priorityIngredients.length > 0 && (
-        <section className="results-section">
-          <h2>Key items to notice</h2>
-          <div className="priority-list">
-            {priorityIngredients.map((item, index) => (
-              <div className="priority-card" key={`${item.inciName}-${index}`}>
-                <strong>{item.inciName}</strong>
-                <span>{item.safetyRating}</span>
-                {item.category && <p>{item.category}</p>}
-                {item.conditionFlags?.length > 0 && (
-                  <p>{item.conditionFlags[0].flagType}: {item.conditionFlags[0].notes}</p>
-                )}
-              </div>
+      {uvOverview.filters.length > 0 && (
+        <section className="results-section uv-overview">
+          <span className="section-label">Confirmed UV filters</span>
+          <h2>{uvOverview.systemType} filter system</h2>
+          <p>
+            “Mineral/inorganic” filters are often called physical filters, while organic filters are
+            often called chemical filters. Both work mainly by absorbing UV; mineral filters can also
+            scatter and reflect some light. The type alone does not make a filter safer or better, and
+            an ingredient list cannot confirm the product’s SPF or level of protection.
+          </p>
+          <div className="uv-filter-list">
+            {uvOverview.filters.map((ingredient) => (
+              <span key={`uv-${ingredient.inciName}`}>
+                <strong>{ingredient.inciName}</strong> — {ingredient.uvFilterType}
+              </span>
             ))}
           </div>
         </section>
       )}
 
+      <section className="data-confidence">
+        <div>
+          <span className="section-label">About these data</span>
+          <h2>{uncertainInput ? 'Use this result with caution' : 'Ingredient coverage is suitable for interpretation'}</h2>
+          <p>
+            Source: {context.source || 'Ingredient analysis'}. {totalKnown} of {totalIngredients} entries
+            were matched to verified database records. Unmatched entries are preserved below and are not
+            silently corrected or used as verified facts in the AI interpretation.
+          </p>
+        </div>
+        {context.source !== 'Manual input' && (
+          <button type="button" className="secondary-button" onClick={() => navigate('/manual')}>
+            Check with manual input
+          </button>
+        )}
+      </section>
+
       <details className="full-analysis">
-        <summary>Show full ingredient breakdown</summary>
+        <summary>Show the full technical ingredient list ({totalIngredients})</summary>
+        <p className="technical-list-note">
+          The complete INCI list is retained for transparency. Ratings describe database and regulatory
+          information; they are not a simple good/bad score for the finished product.
+        </p>
 
         {RATING_ORDER.map((rating) => {
           const items = grouped[rating]
@@ -306,12 +308,12 @@ function ResultsPage() {
           )
         })}
 
-        {results.unknownIngredients.length > 0 && (
+        {unknownIngredients.length > 0 && (
           <div className="rating-section">
-            <h3>Unknown ingredients ({results.unknownIngredients.length})</h3>
-            {results.unknownIngredients.map((item, i) => (
+            <h3>Not matched to the database ({unknownIngredients.length})</h3>
+            {unknownIngredients.map((item, index) => (
               <UnknownIngredientCard
-                key={i}
+                key={`${item.name}-${index}`}
                 name={item.name}
                 aiLabel={item.aiLabel}
                 confidence={item.confidence}

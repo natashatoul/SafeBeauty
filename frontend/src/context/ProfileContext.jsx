@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState } from 'react'
 
 // Creates a "channel" that components can subscribe to.
 // On its own it doesn't hold any data yet — it's just the wiring
@@ -6,41 +6,37 @@ import { createContext, useContext, useState, useEffect } from 'react'
 // without passing it down manually through every level in between.
 const ProfileContext = createContext()
 
+const EMPTY_PROFILE = {
+  skinType: '',
+  hairCondition: '',
+  conditions: [],
+  ageGroup: '',
+  gender: ''
+}
+
+function loadSavedProfile() {
+  try {
+    const saved = localStorage.getItem('safebeauty_profile')
+    if (!saved) return EMPTY_PROFILE
+
+    const parsed = JSON.parse(saved)
+    return {
+      ...EMPTY_PROFILE,
+      ...parsed,
+      conditions: Array.isArray(parsed.conditions) ? parsed.conditions : []
+    }
+  } catch {
+    return EMPTY_PROFILE
+  }
+}
+
 // This component is a "wrapper" that will sit near the top of the app.
 // `children` is a special prop meaning "whatever is nested inside this component"
 // e.g. <ProfileProvider><App /></ProfileProvider> makes <App /> the children here.
 export function ProfileProvider({ children }) {
   // The actual profile data, stored as one object with several fields.
   // Starts empty/default until either localStorage or the user fills it in.
-  const [profile, setProfile] = useState({
-    skinType: '',
-    hairCondition: '',
-    conditions: [],
-    ageGroup: '',
-    gender: ''
-  })
-
-  // HOOK: useEffect()
-  // Runs side effects — things outside the normal "get data, show data" flow,
-  // like reading from localStorage, calling an API, or setting up a timer.
-  // The empty array [] as the second argument means:
-  // "run this code exactly once, right after the component first renders,
-  // and never again after that."
-  useEffect(() => {
-    // localStorage is the browser's built-in storage that survives
-    // page reloads and closing the tab — unlike useState, which resets
-    // every time the page reloads.
-    // getItem() looks up whatever was saved under this key.
-    // Returns null if nothing was ever saved.
-    const saved = localStorage.getItem('safebeauty_profile')
-
-    // localStorage can only store strings, never objects directly.
-    // So saved data is stored as a JSON string, and JSON.parse()
-    // converts that string back into a real JS object we can use.
-    // The `if (saved)` check avoids trying to parse `null`
-    // (which would happen on someone's very first visit).
-    if (saved) setProfile(JSON.parse(saved))
-  }, [])
+  const [profile, setProfile] = useState(loadSavedProfile)
 
   // Function used whenever the profile needs to be updated
   // (e.g. when the user fills in or edits their profile form).

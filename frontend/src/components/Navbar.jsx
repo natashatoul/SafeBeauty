@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import homeIcon from '../assets/Home.svg'
 import scanIcon from '../assets/Scan.svg'
 import historyIcon from '../assets/History.svg'
@@ -6,6 +6,7 @@ import profileIcon from '../assets/Profile.svg'
 import desktopLogo from '../assets/Logo_desktop.svg'
 
 function Navbar() {
+  const location = useLocation()
   // Navbar is a React component.
   // navItems is an array of objects. Each object describes one navigation link:
   // where it goes, what text it shows, and which icon it uses.
@@ -33,6 +34,9 @@ function Navbar() {
             key={item.label}
             // to is a NavLink prop that defines the route this link opens.
             to={item.to}
+            state={item.to === '/profile' && location.pathname === '/results'
+              ? { returnToResults: location.state }
+              : undefined}
             // NavLink gives us isActive. If the current URL matches item.to,
             // the active class is added and CSS highlights the selected page.
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}

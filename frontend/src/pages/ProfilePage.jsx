@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useProfile } from '../context/ProfileContext'
+import { analyseIngredients } from '../services/ingredientService'
 
 // Plain arrays of option strings for dropdowns that don't need separate
 // "technical value" vs "display label" — the value shown IS the value stored.
@@ -28,6 +30,9 @@ function ProfilePage() {
   // It gives us the profile currently saved in Context (and, behind the
   // scenes, in localStorage), plus the function to save a new one.
   const { profile, saveProfile } = useProfile()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const returnToResults = location.state?.returnToResults
 
   // "form" is a SEPARATE, local piece of state — a draft copy of profile.
   // It starts out equal to profile, but from this point on it lives its
@@ -39,6 +44,7 @@ function ProfilePage() {
   // A separate, independent flag: whether to currently show the
   // "✓ Saved!" confirmation message.
   const [saved, setSaved] = useState(false)
+  const [updatingAnalysis, setUpdatingAnalysis] = useState(false)
 
   // Handles every plain dropdown (skinType, hairCondition, ageGroup, gender).
   // One function works for all four fields — see explanation below.
@@ -63,14 +69,15 @@ function ProfilePage() {
   const handleConditionToggle = (value) => {
     // .includes(value) checks: is this value already in the conditions array?
     // Ternary operator (condition ? ifTrue : ifFalse):
-    const updated = form.conditions.includes(value)
+    const conditions = form.conditions ?? []
+    const updated = conditions.includes(value)
       // Already checked -> UNCHECK: keep everything EXCEPT this value
       // (.filter() builds a new array with only the items that pass the test)
-      ? form.conditions.filter(c => c !== value)
+      ? conditions.filter(c => c !== value)
       // Not checked yet -> CHECK: keep everything that was there, plus this new value
       // ([...form.conditions, value] is the spread operator for ARRAYS —
       // same idea as for objects above, but building a new array instead)
-      : [...form.conditions, value]
+      : [...conditions, value]
 
     // Same object-spread pattern as handleChange: keep all other fields,
     // replace only the "conditions" field with the newly computed array.
@@ -78,7 +85,7 @@ function ProfilePage() {
   }
 
   // Runs when the form is submitted (button click, or pressing Enter in a field).
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     // By default, submitting an HTML <form> reloads the whole page —
     // old browser behaviour from before JavaScript handled this.
     // preventDefault() cancels that, so our own code below runs instead.
@@ -88,6 +95,34 @@ function ProfilePage() {
     // saveProfile updates both the Context state AND localStorage
     // (see ProfileContext.jsx — that's where the actual saving logic lives).
     saveProfile(form)
+
+    if (returnToResults?.results) {
+      const previousResults = returnToResults.results
+      const ingredients = [
+        ...(previousResults.results ?? []).map((ingredient) => ingredient.inciName),
+        ...(previousResults.unknownIngredients ?? []).map((ingredient) => ingredient.name)
+      ]
+
+      setUpdatingAnalysis(true)
+      try {
+        const results = await analyseIngredients(ingredients, form.conditions ?? [])
+        navigate('/results', {
+          replace: true,
+          state: {
+            results,
+            analysisContext: {
+              ...(returnToResults.analysisContext ?? {}),
+              selectedConditions: form.conditions ?? []
+            }
+          }
+        })
+        return
+      } catch {
+        alert('Your profile was saved, but the analysis could not be updated. Please try the analysis again.')
+      } finally {
+        setUpdatingAnalysis(false)
+      }
+    }
 
     // Show the "✓ Saved!" confirmation.
     setSaved(true)
@@ -102,7 +137,10 @@ function ProfilePage() {
   return (
     <div>
       <h2>My Profile</h2>
-      <p>Your data is stored locally in your browser only and never sent to any server.</p>
+      <p>
+        Your profile is stored locally in this browser. Selected conditions are sent with an analysis
+        request so the ingredient rules can be personalised.
+      </p>
 
       {/* onSubmit fires when the form is submitted (button click or Enter key) */}
       <form onSubmit={handleSubmit}>
@@ -150,7 +188,7 @@ function ProfilePage() {
                 type="checkbox"
                 id={c.value}
                 // checked reflects whether c.value is currently in the conditions array
-                checked={form.conditions.includes(c.value)}
+                checked={(form.conditions ?? []).includes(c.value)}
                 // onChange calls the toggle function with this specific checkbox's value
                 onChange={() => handleConditionToggle(c.value)}
               />
@@ -161,7 +199,23 @@ function ProfilePage() {
           ))}
         </div>
 
-        <button type="submit">Save Profile</button>
+        <button type="submit" className="primary-button" disabled={updatingAnalysis}>
+          {updatingAnalysis
+            ? 'Updating analysis...'
+            : returnToResults
+              ? 'Save profile and update analysis'
+              : 'Save Profile'}
+        </button>
+        {returnToResults && (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => navigate(-1)}
+            disabled={updatingAnalysis}
+          >
+            Back to results without changes
+          </button>
+        )}
         {/* Conditional rendering: only show this when saved is true */}
         {saved && <span> ✓ Saved!</span>}
       </form>

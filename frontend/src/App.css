@@ -10,10 +10,11 @@
   --border: #d9e4d6;
   --amber: #c97900;
   --amber-soft: #fff2dc;
+  --red: #a83d3d;
+  --red-soft: #f9e7e5;
   --grey-pill: #b6b8b4;
   --grey-soft: #f1f1ef;
   --success: #66d76f;
-  --success-soft: #e7f9e8;
   --font-heading: "Montagu Slab", Georgia, serif;
   --font-body: "Montserrat", Inter, ui-sans-serif, system-ui, sans-serif;
 }
@@ -27,6 +28,36 @@ body {
   color: var(--text);
   background: var(--bg);
   font-family: var(--font-body);
+}
+
+h1 {
+  margin: 0 0 24px;
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  font-weight: 500;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 button,
@@ -96,7 +127,7 @@ button {
   border-radius: 10px;
   text-decoration: none;
   font-weight: 600;
-  font-size: 20px;
+  font-size: 1.25rem;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
@@ -160,14 +191,13 @@ button {
 .scanner-status::before {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 10px;
   background: var(--amber);
   content: "";
 }
 
 .scanner-status.active::before {
   background: var(--success);
-  box-shadow: 0 0 0 5px var(--success-soft);
 }
 
 .scanner-status.error::before {
@@ -179,7 +209,7 @@ button {
   min-height: 300px;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 10px;
   background: #171a17;
 }
 
@@ -201,19 +231,22 @@ button {
   margin: 0 0 12px;
 }
 
-.scanner-message button,
-.barcode-form button {
+.primary-button {
   min-height: 42px;
   padding: 0 18px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--green);
   color: white;
   font-weight: 700;
 }
 
-.scanner-message button:disabled,
-.barcode-form button:disabled {
+.primary-button:hover,
+.primary-button:focus-visible {
+  background: var(--green-dark);
+}
+
+.primary-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -228,6 +261,10 @@ button {
   color: var(--text);
   background: var(--amber-soft);
   border-color: rgba(201, 121, 0, 0.3);
+}
+
+.scan-guidance.highlighted p {
+  color: inherit;
 }
 
 .scan-guidance ul {
@@ -262,7 +299,7 @@ button {
   min-height: 42px;
   padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: white;
 }
 
@@ -281,25 +318,13 @@ button {
   margin-bottom: 44px;
 }
 
-.hero-section h1,
 .recent-section h2 {
-  font-family: var(--font-heading);
   font-weight: 500;
   letter-spacing: -0.02em;
 }
 
-.hero-section h1 {
-  margin: 0 0 28px;
-  font-size: clamp(2rem, 3.2vw, 2.8rem);
-  line-height: 0.98;
-}
-
 .hero-section p {
-  margin: 0;
   max-width: 360px;
-  color: var(--muted);
-  font-size: 1rem;
-  line-height: 1.25;
 }
 
 .action-grid {
@@ -324,18 +349,12 @@ button {
 
 .action-card h2 {
   margin: 0 0 14px;
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 20px;
+  font-size: 1.25rem;
   line-height: 1.1;
 }
 
 .action-card p {
-  margin: 0;
   max-width: 250px;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.25;
 }
 
 .action-card button,
@@ -346,10 +365,10 @@ button {
   color: var(--green-dark);
   background: white;
   border: 2px solid var(--green);
-  border-radius: 7px;
-  font-size: 13px;
+  border-radius: 10px;
+  font-size: 0.75rem;
   font-weight: 600;
-  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
 .action-card button {
@@ -366,7 +385,6 @@ button {
   background: var(--green-soft);
   border-color: var(--green-dark);
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(70, 111, 75, 0.18);
   color: var(--green-dark);
 }
 
@@ -379,7 +397,6 @@ button {
 
 .action-card button:active {
   transform: translateY(0);
-  box-shadow: none;
 }
 
 .show-all-button:hover,
@@ -403,7 +420,7 @@ button {
 
 .section-header h2 {
   margin: 0;
-  font-size: 28px;
+  font-size: 1.75rem;
   line-height: 1;
 }
 
@@ -426,15 +443,8 @@ button {
 
 .recent-product h3 {
   margin: 0 0 6px;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 1.125rem;
   line-height: 1.1;
-}
-
-.recent-product p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
 }
 
 .rating-pills {
@@ -451,10 +461,10 @@ button {
   align-items: center;
   justify-content: center;
   padding: 0 14px;
-  border-radius: 9px;
+  border-radius: 10px;
   color: white;
   text-align: center;
-  font-size: 13px;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
 }
@@ -476,7 +486,7 @@ button {
   color: var(--green-dark);
   background: transparent;
   border: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -485,6 +495,13 @@ button {
 .text-button:focus-visible {
   text-decoration: underline;
   outline: none;
+}
+
+.ingredient-count {
+  margin: 8px 0 0;
+  color: var(--green-dark);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .show-all-button {
@@ -511,23 +528,24 @@ button {
 .section-label {
   margin: 0 0 8px;
   color: var(--green-dark);
+  font-family: var(--font-body);
   font-size: 0.8rem;
   font-weight: 700;
+  line-height: 1.2;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.results-header h1,
 .results-section h2 {
   margin: 0;
-  font-family: var(--font-heading);
-  font-weight: 600;
-  color: var(--ink);
 }
 
-.results-header h1 {
-  font-size: clamp(2.4rem, 5vw, 4.2rem);
-  line-height: 0.95;
+.results-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .secondary-button {
@@ -548,12 +566,14 @@ button {
 
 .insight-card,
 .summary-card,
-.signal-card,
-.priority-card,
+.profile-card,
+.formula-card,
+.regulatory-note,
+.data-confidence,
+.uv-overview,
 .full-analysis {
-  border-radius: 14px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 10px 30px rgba(51, 77, 54, 0.06);
 }
 
 .insight-card {
@@ -564,10 +584,33 @@ button {
 
 .insight-card p {
   max-width: 900px;
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.6;
   white-space: pre-line;
+}
+
+.insight-card small {
+  display: block;
+  margin-top: 14px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.quality-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  border: 1.5px solid #d69835;
+  border-radius: 10px;
+  background: #fff8e9;
+  color: #684814;
+}
+
+.quality-banner p {
+  max-width: 720px;
+  margin: 5px 0 0;
+  color: inherit;
 }
 
 .summary-grid {
@@ -584,45 +627,9 @@ button {
 .summary-card strong {
   display: block;
   margin-bottom: 6px;
-  color: var(--ink);
+  color: var(--text);
   font-size: 2.4rem;
   line-height: 1;
-}
-
-.summary-card p {
-  margin: 0;
-  color: var(--muted);
-}
-
-.results-page .rating-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.results-page .rating-pill {
-  min-width: 82px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  color: white;
-  font-weight: 700;
-  text-align: center;
-}
-
-.results-page .rating-pill.red {
-  background: #d84a4a;
-}
-
-.results-page .rating-pill.amber {
-  background: #d68100;
-}
-
-.results-page .rating-pill.green {
-  background: #62d96b;
-}
-
-.results-page .rating-pill.grey {
-  background: #aeb4b0;
 }
 
 .results-section {
@@ -634,125 +641,190 @@ button {
   font-size: 1.65rem;
 }
 
-.signal-grid {
+.section-intro {
+  margin: -8px 0 18px;
+}
+
+.empty-guidance,
+.regulatory-note,
+.data-confidence {
+  padding: 22px 24px;
+}
+
+.empty-guidance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1.5px solid rgba(94, 138, 100, 0.35);
+  border-radius: 10px;
+}
+
+.profile-grid,
+.formula-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
-.signal-card {
+.profile-card {
   padding: 22px 24px;
-  border: 1.5px solid rgba(94, 138, 100, 0.45);
 }
 
-.signal-card h3 {
-  margin: 0 0 10px;
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--ink);
+.profile-card.concern {
+  background: rgba(255, 248, 243, 0.82);
 }
 
-.signal-card p,
-.priority-card p {
-  margin: 0;
+.profile-card.supportive {
+  background: rgba(244, 251, 242, 0.82);
+}
+
+.profile-card > p {
+  margin: 12px 0 0;
+}
+
+.profile-ingredient {
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid rgba(94, 138, 100, 0.18);
+}
+
+.profile-ingredient strong,
+.profile-ingredient span {
+  color: var(--text);
+}
+
+.profile-ingredient p {
+  margin: 6px 0 0;
+}
+
+.rule-source {
+  display: block;
+  margin-top: 4px;
   color: var(--muted);
   line-height: 1.45;
 }
 
-.category-cloud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+.rule-source::before {
+  margin-right: 4px;
+  font-weight: 700;
+  content: "*";
 }
 
-.category-cloud span {
-  padding: 9px 14px;
-  border-radius: 999px;
-  background: var(--green-soft);
+.regulatory-note {
+  margin-top: 16px;
+  border-left: 4px solid #d69835;
+}
+
+.regulatory-note h3,
+.formula-card h3,
+.data-confidence h2,
+.uv-overview h2 {
+  margin: 0;
+}
+
+.regulatory-note > p {
+  margin-top: 6px;
+}
+
+.formula-card {
+  padding: 22px 24px;
+}
+
+.formula-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.formula-card-heading span {
+  display: block;
+  margin-top: 3px;
   color: var(--green-dark);
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
-.role-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.role-card {
-  display: grid;
-  gap: 14px;
-  padding: 22px 24px;
-  border: 1.5px solid rgba(94, 138, 100, 0.35);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.role-card h3 {
-  margin: 0 0 4px;
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.role-card span {
-  display: inline-block;
-  margin-bottom: 10px;
+.formula-card-heading > strong {
+  min-width: 34px;
+  padding: 7px;
+  border-radius: 10px;
+  background: var(--green-soft);
   color: var(--green-dark);
-  font-size: 0.82rem;
-  font-weight: 800;
+  text-align: center;
 }
 
-.role-card p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.45;
+.formula-card > p {
+  margin: 14px 0;
 }
 
-.role-card ul {
+.ingredient-flag-legend {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  margin: 0 0 18px;
 }
 
-.role-card li {
+.ingredient-chips,
+.uv-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ingredient-chip,
+.uv-filter-list span {
   padding: 7px 10px;
-  border-radius: 999px;
-  background: var(--green-soft);
-  color: var(--green-dark);
+  border-radius: 10px;
   font-size: 0.82rem;
   font-weight: 700;
 }
 
-.priority-list {
-  display: grid;
-  gap: 12px;
+.ingredient-chip--neutral {
+  background: var(--grey-soft);
+  color: var(--muted);
 }
 
-.priority-card {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
-  gap: 6px 18px;
-  padding: 18px 22px;
-}
-
-.priority-card strong {
-  color: var(--ink);
-}
-
-.priority-card span {
-  justify-self: end;
+.ingredient-chip--beneficial,
+.uv-filter-list span {
+  background: var(--green-soft);
   color: var(--green-dark);
-  font-weight: 700;
 }
 
-.priority-card p {
-  grid-column: 1 / -1;
+.ingredient-chip--caution {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.ingredient-chip--red {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.uv-overview {
+  padding: 24px 26px;
+}
+
+.uv-overview h2 {
+  margin-bottom: 10px;
+}
+
+.uv-overview > p {
+  margin: 0 0 18px;
+}
+
+.data-confidence {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.data-confidence h2 {
+  margin-bottom: 8px;
+  font-size: 1.3rem;
 }
 
 .full-analysis {
@@ -767,11 +839,6 @@ button {
 
 .rating-section {
   margin-top: 22px;
-}
-
-.rating-section h3 {
-  font-family: var(--font-heading);
-  font-weight: 600;
 }
 
 @media (max-width: 760px) {
@@ -831,11 +898,6 @@ button {
     margin: 28px 0 36px;
   }
 
-  .hero-section h1 {
-    margin-bottom: 24px;
-    font-size: 2.05rem;
-  }
-
   .action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
@@ -871,9 +933,24 @@ button {
   }
 
   .summary-grid,
-  .signal-grid,
-  .role-grid {
+  .profile-grid,
+  .formula-grid {
     grid-template-columns: 1fr;
+  }
+
+  .results-header,
+  .quality-banner,
+  .empty-guidance,
+  .data-confidence {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .results-header .secondary-button,
+  .quality-banner .secondary-button,
+  .empty-guidance .secondary-button,
+  .data-confidence .secondary-button {
+    width: 100%;
   }
 
   .rating-pills {

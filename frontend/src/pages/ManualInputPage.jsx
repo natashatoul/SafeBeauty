@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { analyseIngredients } from '../services/ingredientService'
 import { useProfile } from '../context/ProfileContext'
+import { parseIngredientList } from '../utils/ingredientParsing'
 
 function ManualInputPage() {
   // HOOK: useState('')
@@ -26,15 +27,14 @@ function ManualInputPage() {
   // Read the locally saved profile so selected conditions can personalise
   // backend condition flags.
   const { profile } = useProfile()
+  const detectedIngredients = parseIngredientList(text)
 
   // This function runs when the user clicks the "Analyse" button.
   // It's async because it needs to wait for a network request to finish.
   const handleAnalyse = async () => {
-    // Turn the raw text into a clean array of ingredient names:
-    // 1. split(',')   -> break the string into pieces wherever there's a comma
-    // 2. map(trim)    -> remove extra spaces from each piece
-    // 3. filter(...)  -> drop any empty strings (e.g. from a trailing comma)
-    const ingredients = text.split(',').map(i => i.trim()).filter(i => i !== '')
+    // Turn common label formats (commas, bullets, semicolons or lines)
+    // into a clean array while preserving slashes inside valid INCI names.
+    const ingredients = detectedIngredients
 
     // Update the "loading" state to true.
     // This triggers a re-render, so the UI can show "Analysing..." on the button.
@@ -48,8 +48,16 @@ function ManualInputPage() {
       // Move to the "/results" route, carrying the results data along.
       // { state: { results } } attaches this data to the navigation —
       // the next page can read it back out via useLocation().
-      navigate('/results', { state: { results } })
-    } catch (error) {
+      navigate('/results', {
+        state: {
+          results,
+          analysisContext: {
+            source: 'Manual input',
+            selectedConditions: profile.conditions ?? []
+          }
+        }
+      })
+    } catch {
       // If analyseIngredients() throws an error (e.g. network failure),
       // this block runs instead of crashing the app.
       alert('Something went wrong. Please try again.')
@@ -63,7 +71,7 @@ function ManualInputPage() {
   return (
     <div>
       <h2>Enter Ingredients</h2>
-      <p>Paste the ingredient list from your product, separated by commas.</p>
+      <p>Paste the ingredient list separated by commas, bullets, semicolons or new lines.</p>
 
       <textarea
         // "Controlled" textarea: its visible content is always
@@ -78,9 +86,16 @@ function ManualInputPage() {
         rows={6}
         cols={50}
       />
+      {text.trim() !== '' && (
+        <p className="ingredient-count" role="status">
+          {detectedIngredients.length} ingredient{detectedIngredients.length === 1 ? '' : 's'} detected
+        </p>
+      )}
       <br />
 
       <button
+        type="button"
+        className="primary-button"
         onClick={handleAnalyse}
         // Button is disabled (greyed out, unclickable) if EITHER:
         // - loading is true (an analysis is already in progress), OR
