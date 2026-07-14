@@ -22,7 +22,11 @@ public class IngredientAnalysisService
         _aiSummary = aiSummary;
     }
 
-    public async Task<AnalyseResponse> AnalyseAsync(List<string> ingredients, List<string>? userConditions = null)
+    public async Task<AnalyseResponse> AnalyseAsync(
+        List<string> ingredients,
+        List<string>? userConditions = null,
+        string? ageGroup = null,
+        string? gender = null)
     {
         var response = new AnalyseResponse();
 
@@ -145,7 +149,11 @@ public class IngredientAnalysisService
                 : string.Empty;
             response.Results.Add(result);
         }
-        response.AiSummary = await _aiSummary.SummariseAsync(response, userConditions ?? new List<string>());
+        response.AiSummary = await _aiSummary.SummariseAsync(
+            response,
+            userConditions ?? new List<string>(),
+            ageGroup,
+            gender);
         return response;
         
     }

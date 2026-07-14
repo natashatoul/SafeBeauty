@@ -3,14 +3,23 @@
 // just a plain string (the ingredient name), not a full ingredient object,
 // because there's no safety data to show for these.
 function UnknownIngredientCard({ name, aiLabel, confidence }) {
+  const hasAiEstimate = aiLabel && Number.isFinite(confidence)
+
   return (
-    <div style={{ borderLeft: '4px solid grey', padding: '8px', marginBottom: '8px' }}>
-      <strong>{name}</strong> 
-      <p>Not found in database</p> 
-      <p>AI analysis: {aiLabel} ({Math.round(confidence * 100)}%)</p>
-      <p style={{ fontSize: '0.8em', color: 'grey'}}>
-        This is an AI estimate, not a verified safety assessment.</p>
-    </div>
+    <article className="technical-ingredient technical-ingredient--grey">
+      <div className="technical-ingredient-heading">
+        <strong>{name}</strong>
+        <span>Not verified</span>
+      </div>
+      {hasAiEstimate && (
+        <div className="technical-ingredient-details">
+          <p>AI estimate: {aiLabel} ({Math.round(confidence * 100)}%)</p>
+          <small className="technical-ingredient-note">
+            This is an AI estimate, not a verified safety assessment.
+          </small>
+        </div>
+      )}
+    </article>
   )
 }
 

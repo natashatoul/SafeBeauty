@@ -189,7 +189,11 @@ namespace SafeBeauty.API.Controllers
               return BadRequest("Ingredient list cannot be empty.");     
             }
             
-            var response = await _analysisService.AnalyseAsync(request.Ingredients, request.UserConditions);
+            var response = await _analysisService.AnalyseAsync(
+                request.Ingredients,
+                request.UserConditions,
+                request.AgeGroup,
+                request.Gender);
             return Ok(response);
             
             

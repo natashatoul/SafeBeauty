@@ -14,14 +14,14 @@ const FORMULA_GROUPS = [
     id: 'moisture',
     title: 'Moisture support',
     technical: 'Humectants',
-    description: 'Helps attract and hold water in the skin.',
+    description: 'helps attract and hold water in the skin.',
     matches: (item) => hasCategory(item, 'Humectants') || hasFunction(item, 'HUMECTANT')
   },
   {
     id: 'softening',
     title: 'Softening and moisture barrier',
     technical: 'Emollients and skin protectants',
-    description: 'Helps soften the skin and reduce moisture loss.',
+    description: 'helps soften the skin and reduce moisture loss.',
     matches: (item) => hasCategory(item, 'Emollients')
       || hasFunction(item, 'SKIN CONDITIONING - EMOLLIENT')
       || hasFunction(item, 'SKIN PROTECTING')
@@ -30,7 +30,7 @@ const FORMULA_GROUPS = [
     id: 'texture',
     title: 'Texture and stability',
     technical: 'Emulsifiers, thickeners and stabilisers',
-    description: 'Keeps the formula mixed and gives it thickness and spreadability.',
+    description: 'keeps the formula mixed and gives it thickness and spreadability.',
     matches: (item) => [
       'EMULSION STABILISING',
       'SURFACTANT - EMULSIFYING',
@@ -43,14 +43,14 @@ const FORMULA_GROUPS = [
     id: 'preservation',
     title: 'Product protection',
     technical: 'Preservatives',
-    description: 'Helps limit microbial growth and keep the product usable after opening.',
+    description: 'helps limit microbial growth and keep the product usable after opening.',
     matches: (item) => hasCategory(item, 'Preservative')
   },
   {
     id: 'cleansing',
     title: 'Cleansing system',
     technical: 'Cleansing surfactants',
-    description: 'Helps lift oils or residue so they can be rinsed away.',
+    description: 'helps lift oils or residue so they can be rinsed away.',
     matches: (item) => hasFunction(item, 'SURFACTANT - CLEANSING')
       || hasFunction(item, 'CLEANSING')
   },
@@ -58,7 +58,7 @@ const FORMULA_GROUPS = [
     id: 'fragrance',
     title: 'Fragrance',
     technical: 'Perfuming ingredients',
-    description: 'Adds scent and may matter for fragrance-sensitive users.',
+    description: 'adds scent and may matter for fragrance-sensitive users.',
     matches: (item) => hasCategory(item, 'Fragrance')
   }
 ]

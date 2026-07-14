@@ -87,6 +87,8 @@ function ScanPage() {
     try {
       const params = new URLSearchParams()
       selectedConditions.forEach((condition) => params.append('userConditions', condition))
+      if (profile.ageGroup) params.set('ageGroup', profile.ageGroup)
+      if (profile.gender) params.set('gender', profile.gender)
       const response = await axios.get(
         `${API_URL}/products/barcode/${encodeURIComponent(barcode)}`,
         { params }
@@ -96,7 +98,9 @@ function ScanPage() {
         source: 'Open Beauty Facts',
         productName: response.data.productName,
         barcode: response.data.barcode,
-        selectedConditions
+        selectedConditions,
+        ageGroup: profile.ageGroup,
+        gender: profile.gender
       }
       const savedAnalysis = saveAnalysis({ results, analysisContext })
 
@@ -116,7 +120,7 @@ function ScanPage() {
 
       return 'The product service is temporarily unavailable. Please try again.'
     }
-  }, [navigate, selectedConditions])
+  }, [navigate, profile.ageGroup, profile.gender, selectedConditions])
 
   const processBarcode = useCallback(async (barcode) => {
     const validationError = getBarcodeValidationError(barcode)
@@ -254,7 +258,7 @@ function ScanPage() {
 
   return (
     <div className="scan-page">
-      <h2>Scan Barcode</h2>
+      <h1>Scan Barcode</h1>
       <p>Point your camera at the product barcode.</p>
 
       <p className={`scanner-status ${scannerStatus}`} role="status" aria-live="polite">

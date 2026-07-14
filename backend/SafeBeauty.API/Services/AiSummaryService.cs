@@ -31,6 +31,18 @@ public class AiSummaryService
     // one string we can swap without changing the rest of the service.
     private const string ModelId = "meta-llama/Llama-3.1-8B-Instruct";
 
+    // Only values offered by ProfilePage may enter the model prompt. Besides
+    // keeping the wording consistent, this prevents arbitrary user text from
+    // being treated as prompt instructions.
+    private static readonly HashSet<string> AllowedAgeGroups = new(StringComparer.Ordinal)
+    {
+        "Under 18", "18-25", "26-35", "36-45", "46-60", "60+"
+    };
+    private static readonly HashSet<string> AllowedGenders = new(StringComparer.Ordinal)
+    {
+        "Female", "Male", "Prefer not to say"
+    };
+
     public AiSummaryService(
         HttpClient httpClient,
         IConfiguration configuration,
@@ -41,7 +53,11 @@ public class AiSummaryService
         _logger = logger;
     }
 
-    public async Task<string> SummariseAsync(AnalyseResponse results, List<string> userConditions)
+    public async Task<string> SummariseAsync(
+        AnalyseResponse results,
+        List<string> userConditions,
+        string? ageGroup = null,
+        string? gender = null)
     {
         // Always build a deterministic fallback first.
         // This is our safety net: if Hugging Face is slow, unavailable, unauthorised,
@@ -61,7 +77,11 @@ public class AiSummaryService
             // BuildMessages returns two strings:
             //   systemMessage = rules for the model ("do not invent facts")
             //   userMessage   = the actual analysis data for this product
-            var (systemMessage, userMessage) = BuildMessages(results, userConditions);
+            var (systemMessage, userMessage) = BuildMessages(
+                results,
+                userConditions,
+                ageGroup,
+                gender);
 
             // Anonymous object: a temporary C# object that matches the JSON shape
             // expected by the Hugging Face chat endpoint.
@@ -133,9 +153,10 @@ public class AiSummaryService
                     var summary = text.Trim();
                     if (ViolatesSafetyBoundary(summary) || ContradictsProfileFlags(summary, results))
                     {
+                        // Do not include the rejected model text in logs. It may contain
+                        // optional profile details such as age group or gender.
                         _logger.LogWarning(
-                            "AI summary crossed a medical or suitability boundary; using fallback. Summary: {Summary}",
-                            summary);
+                            "AI summary crossed a medical, suitability, or unsupported efficacy boundary; using fallback.");
                         return fallback;
                     }
 
@@ -159,7 +180,9 @@ public class AiSummaryService
 
     private static (string systemMessage, string userMessage) BuildMessages(
         AnalyseResponse results,
-        List<string> userConditions)
+        List<string> userConditions,
+        string? ageGroup,
+        string? gender)
     {
         var known = results.Results
             .Select(result =>
@@ -183,6 +206,7 @@ public class AiSummaryService
         var conditionsLine = userConditions.Any()
             ? $"A profile with {userConditions.Count} selected condition(s) was provided. Refer to it only as 'the selected profile'; do not repeat condition names."
             : "No specific skin profile was provided.";
+        var presentationContextLine = BuildPresentationContextLine(ageGroup, gender);
 
         var systemMessage =
     "You are a cosmetic ingredient assistant. Using ONLY the verified analysis facts supplied by the user, " +
@@ -193,6 +217,12 @@ public class AiSummaryService
     "Do not claim that the product treats, heals, soothes, calms, alleviates, prevents, cures, improves, or manages any medical condition or symptoms. " +
     "Do not say that the product is suitable for atopic dermatitis, eczema, psoriasis, rosacea, acne, alopecia, seborrhoeic dermatitis, or any other condition. " +
     "Do not recommend the product for a medical or skin condition. " +
+
+    "Age group and gender are optional presentation context only. They never change ingredient facts, regulatory ratings, condition flags, safety, suitability, or efficacy. " +
+    "Never combine age or gender with words such as suitable, recommended, effective, beneficial, designed for, or intended for. " +
+    "Gender may affect neutral wording only; prefer second-person wording such as 'your skin'. Do not describe 'male skin' or 'female skin', and do not claim that a gender inherently has particular needs or properties. " +
+    "If age is mentioned, copy the supplied age-group label exactly. Do not translate a range such as '46-60' into 'women in their 40s and 50s'. " +
+    "Age group may be mentioned only to frame cosmetic roles already present in the verified data. Do not infer mature skin, young skin, wrinkles, anti-ageing performance, or age-specific suitability from age alone. " +
 
     "You may describe ingredient functions only as cosmetic functions, for example hydration, humectant effect, smoothing, cleansing, preservative, fragrance, or exfoliation. " +
     "Use cautious wording such as 'contains ingredients commonly used for', 'is flagged as a potential concern', or 'may be relevant for cosmetic hydration'. " +
@@ -218,8 +248,8 @@ public class AiSummaryService
     "CosIng functions are possible listed functions for an ingredient in cosmetics, not proof of the ingredient's exact purpose in this specific product. " +
     "If a function list contains context-specific uses such as hair conditioning or oral care, do not mention those unless the Product signals line supports that product context. " +
 
-    "Do not infer the product type, such as sunscreen, cleanser, or fragrance-based formula, unless the Product signals line explicitly supports it. " +
-    "If confirmed Annex VI UV filters are supplied, explain their mineral, organic, or organic particulate type without claiming an SPF value or exact protection level. " +
+    "Do not infer the product type, such as sunscreen, cleanser, or fragrance-based formula, unless the Product signals line explicitly supports it. The presence of UV filters alone does not prove that the finished product is a sunscreen. " +
+    "If confirmed Annex VI UV filters are supplied, explain their mineral, organic, or organic particulate type without claiming an SPF value, broad-spectrum protection, UVA/UVB performance, or any exact protection level. " +
     "Known ingredient roles are deterministic summaries of curated categories and possible CosIng functions. " +
     "Unmatched ingredient names are intentionally not supplied because they may contain OCR errors. " +
     "If the unmatched count is above zero, mention only the count and that those names could not be verified. " +
@@ -240,9 +270,33 @@ public class AiSummaryService
             $"Potential concerns (Avoid flags): {(concerns.Any() ? string.Join(", ", concerns) : "none")}.\n" +
             $"Beneficial profile signals: {(benefits.Any() ? string.Join("; ", benefits) : "none")}.\n" +
             $"Personalised interpretation rule: {(concerns.Any() ? "Avoid flags are present, so personalised concerns may be mentioned only for those listed ingredients." : "There are no Avoid flags. Do not say mixed relevance for the selected profile. Do not treat regulatory restrictions as personalised concerns.")}\n" +
-            $"{conditionsLine}";
+            $"{conditionsLine}\n" +
+            $"{presentationContextLine}";
 
         return (systemMessage, userMessage);
+    }
+
+    private static string BuildPresentationContextLine(string? ageGroup, string? gender)
+    {
+        var safeAgeGroup = AllowedAgeGroups.Contains(ageGroup ?? string.Empty)
+            ? ageGroup
+            : null;
+        var safeGender = AllowedGenders.Contains(gender ?? string.Empty)
+            && gender != "Prefer not to say"
+            ? gender
+            : null;
+
+        if (safeAgeGroup is null && safeGender is null)
+        {
+            return "No optional age or gender presentation context was provided.";
+        }
+
+        var values = new List<string>();
+        if (safeAgeGroup is not null) values.Add($"age group {safeAgeGroup}");
+        if (safeGender is not null) values.Add($"gender {safeGender}");
+
+        return $"Optional presentation context (wording only): {string.Join("; ", values)}. " +
+            "Do not use it to create or alter ingredient claims.";
     }
 
     private static List<string> BuildProductSignals(AnalyseResponse results)
@@ -329,6 +383,12 @@ public class AiSummaryService
             "recommended for",
             "designed to",
             "beneficial for",
+            "broad-spectrum protection",
+            "broad spectrum protection",
+            "protection against uva and uvb",
+            "protects against uva and uvb",
+            "provides uva protection",
+            "provides uvb protection",
             "eczema care",
             "for eczema",
             "for atopic dermatitis",

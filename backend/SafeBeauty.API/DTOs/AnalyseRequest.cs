@@ -9,5 +9,9 @@ public class AnalyseRequest
     // If this list is empty, the backend returns ingredient information
     // without personalised condition flags.
     public List<string> UserConditions { get; set;} = new();
-    
+
+    // Optional presentation context for the AI explanation only. These values
+    // are never used to calculate ratings or condition flags.
+    public string? AgeGroup { get; set; }
+    public string? Gender { get; set; }
 }

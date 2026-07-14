@@ -235,11 +235,14 @@ function ResultsPage() {
                 <div className="formula-card-heading">
                   <div>
                     <h3>{group.title}</h3>
-                    <span>{group.technical}</span>
+                    <p className="formula-card-description">
+                      {group.technical} — {group.description}
+                    </p>
                   </div>
-                  <strong>{group.ingredients.length}</strong>
+                  <span className="formula-card-count">
+                    {group.ingredients.length} {group.ingredients.length === 1 ? 'ingredient' : 'ingredients'}
+                  </span>
                 </div>
-                <p>{group.description}</p>
                 <div className="ingredient-chips">
                   {group.ingredients.slice(0, 5).map((ingredient) => (
                     <span
@@ -284,7 +287,7 @@ function ResultsPage() {
       <section className="data-confidence">
         <div>
           <span className="section-label">About these data</span>
-          <h2>{uncertainInput ? 'Use this result with caution' : 'Ingredient coverage is suitable for interpretation'}</h2>
+          <h2>{uncertainInput ? 'Use this result with caution' : 'Most ingredients were successfully identified'}</h2>
           <p>
             Source: {context.source || 'Ingredient analysis'}. {totalKnown} of {totalIngredients} entries
             were matched to verified database records. Unmatched entries are preserved below and are not

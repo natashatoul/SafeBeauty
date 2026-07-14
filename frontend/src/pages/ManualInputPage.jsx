@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { analyseIngredients } from '../services/ingredientService'
 import { useProfile } from '../context/ProfileContext'
@@ -17,6 +17,7 @@ function ManualInputPage() {
   // Whenever setText() is called, React re-renders this component
   // so the screen reflects the new value.
   const [text, setText] = useState('')
+  const textareaRef = useRef(null)
 
   // HOOK: useState(false)
   // A second, separate piece of state — completely independent from "text".
@@ -37,6 +38,14 @@ function ManualInputPage() {
     detectedIngredients
   )
 
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    textarea.style.height = 'auto'
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }, [text])
+
   // This function runs when the user clicks the "Analyse" button.
   // It's async because it needs to wait for a network request to finish.
   const handleAnalyse = async () => {
@@ -51,10 +60,15 @@ function ManualInputPage() {
     try {
       // Call the service function and WAIT (await) for the result.
       // This is likely a network request to a server or API.
-      const results = await analyseIngredients(ingredients, profile.conditions ?? [])
+      const results = await analyseIngredients(ingredients, profile.conditions ?? [], {
+        ageGroup: profile.ageGroup,
+        gender: profile.gender
+      })
       const analysisContext = {
         source: 'Manual input',
-        selectedConditions: profile.conditions ?? []
+        selectedConditions: profile.conditions ?? [],
+        ageGroup: profile.ageGroup,
+        gender: profile.gender
       }
 
       // History is a convenience feature: a storage failure must not block the
@@ -81,45 +95,47 @@ function ManualInputPage() {
     }
   }
 
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    await handleAnalyse()
+  }
+
   return (
-    <div>
-      <h2>Enter Ingredients</h2>
-      <p>Paste the ingredient list separated by commas, bullets, semicolons or new lines.</p>
+    <div className="manual-page">
+      <header className="manual-page-header">
+        <h1>Enter Ingredients</h1>
+        <p>Paste the ingredient list separated by commas, bullets, semicolons or new lines.</p>
+      </header>
 
-      <textarea
-        // "Controlled" textarea: its visible content is always
-        // exactly whatever is stored in the "text" state.
-        value={text}
-        // Every time the user types a character, this fires.
-        // e.target.value is the textarea's current content.
-        // setText(...) updates the state, which re-renders the textarea
-        // with the new value.
-        onChange={(e) => setText(e.target.value)}
-        placeholder="e.g. Aqua, Glycerin, Niacinamide..."
-        rows={6}
-        cols={50}
-      />
-      {text.trim() !== '' && (
-        <p className="ingredient-count" role="status">
-          {willInferIngredientBoundaries
-            ? 'Ingredient boundaries will be detected during analysis'
-            : `${detectedIngredients.length} ingredient${detectedIngredients.length === 1 ? '' : 's'} detected`}
-        </p>
-      )}
-      <br />
+      <form className="manual-form-card" onSubmit={handleSubmit}>
+        <label className="manual-input-label" htmlFor="ingredient-list">Ingredient list</label>
+        <textarea
+          ref={textareaRef}
+          id="ingredient-list"
+          className="manual-textarea"
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder="e.g. Aqua, Glycerin, Niacinamide..."
+          rows={8}
+        />
 
-      <button
-        type="button"
-        className="primary-button"
-        onClick={handleAnalyse}
-        // Button is disabled (greyed out, unclickable) if EITHER:
-        // - loading is true (an analysis is already in progress), OR
-        // - the trimmed text is empty (nothing to analyse)
-        disabled={loading || text.trim() === ''}
-      >
-        {/* Ternary: if loading is true show "Analysing...", otherwise show "Analyse" */}
-        {loading ? 'Analysing...' : 'Analyse'}
-      </button>
+        <div className="manual-form-actions">
+          {text.trim() !== '' && (
+            <p className="ingredient-count" role="status">
+              {willInferIngredientBoundaries
+                ? 'Ingredient boundaries will be detected during analysis'
+                : `${detectedIngredients.length} ingredient${detectedIngredients.length === 1 ? '' : 's'} detected`}
+            </p>
+          )}
+          <button
+            type="submit"
+            className="primary-button"
+            disabled={loading || text.trim() === ''}
+          >
+            {loading ? 'Analysing...' : 'Analyse ingredients'}
+          </button>
+        </div>
+      </form>
     </div>
   )
 }

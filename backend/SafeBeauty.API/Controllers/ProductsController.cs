@@ -23,7 +23,9 @@ public class ProductsController : ControllerBase
     [HttpGet("barcode/{barcode}")]
     public async Task<ActionResult<ProductAnalyseResponse>> GetByBarcode(
         string barcode,
-        [FromQuery] List<string>? userConditions)
+        [FromQuery] List<string>? userConditions,
+        [FromQuery] string? ageGroup,
+        [FromQuery] string? gender)
     {
         if (!BarcodeValidator.TryValidate(barcode, out var validationError))
         {
@@ -65,7 +67,7 @@ public class ProductsController : ControllerBase
 
             try
             {
-                return await BuildProductResponse(barcode, json, userConditions);
+                return await BuildProductResponse(barcode, json, userConditions, ageGroup, gender);
             }
             catch (JsonException)
             {
@@ -78,7 +80,9 @@ public class ProductsController : ControllerBase
     private async Task<ActionResult<ProductAnalyseResponse>> BuildProductResponse(
         string barcode,
         string json,
-        List<string>? userConditions)
+        List<string>? userConditions,
+        string? ageGroup,
+        string? gender)
     {
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
@@ -136,7 +140,11 @@ public class ProductsController : ControllerBase
         }
 
         // Analyse extracted ingredients
-        var analysis = await _analysisService.AnalyseAsync(ingredientNames, userConditions);
+        var analysis = await _analysisService.AnalyseAsync(
+            ingredientNames,
+            userConditions,
+            ageGroup,
+            gender);
         return new ProductAnalyseResponse
         {
             ProductName = productName,

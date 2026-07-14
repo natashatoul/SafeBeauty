@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import homeIcon from '../assets/Home.svg'
 import scanIcon from '../assets/Scan.svg'
 import historyIcon from '../assets/History.svg'
-import manualIcon from '../assets/Manual.svg'
+import manualIcon from '../assets/Enter_list.svg'
 import profileIcon from '../assets/Profile.svg'
 import desktopLogo from '../assets/Logo_desktop.svg'
 
