@@ -111,7 +111,7 @@ button {
 
 .side-nav {
   display: grid;
-  gap: 40px;
+  gap: 24px;
 }
 
 .nav-item {
@@ -159,6 +159,7 @@ button {
 
 .source-note {
   margin: auto 0 0;
+  padding-left: 24px;
   color: var(--muted);
   font-size: 0.74rem;
   line-height: 1.35;
@@ -349,8 +350,6 @@ button {
 
 .action-card h2 {
   margin: 0 0 14px;
-  font-size: 1.25rem;
-  line-height: 1.1;
 }
 
 .action-card p {
@@ -430,12 +429,12 @@ button {
 }
 
 .recent-row {
-  min-height: 60px;
+  min-height: 88px;
   display: grid;
   grid-template-columns: 220px 1fr auto;
   align-items: center;
   gap: 32px;
-  padding: 0 32px;
+  padding: 14px 32px;
   background: var(--surface);
   border: 1px solid rgba(217, 228, 214, 0.45);
   border-radius: 10px;
@@ -443,8 +442,17 @@ button {
 
 .recent-product h3 {
   margin: 0 0 6px;
-  font-size: 1.125rem;
-  line-height: 1.1;
+}
+
+.action-card h2,
+.recent-product h3 {
+  color: var(--green-dark);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .rating-pills {
@@ -473,12 +481,111 @@ button {
   background: var(--amber);
 }
 
+.rating-pill.red {
+  background: var(--red);
+}
+
 .rating-pill.green {
   background: var(--success);
 }
 
 .rating-pill.grey {
   background: var(--grey-pill);
+}
+
+.history-no-ratings {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.history-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.history-delete-button {
+  padding: 0;
+  color: var(--red);
+  background: transparent;
+  border: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.history-delete-button:hover,
+.history-delete-button:focus-visible {
+  text-decoration: underline;
+}
+
+.recent-empty {
+  padding: 28px 32px;
+  background: var(--surface);
+  border-radius: 10px;
+}
+
+.recent-empty p {
+  margin: 0;
+}
+
+.history-page {
+  width: min(100%, 1040px);
+}
+
+.history-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 24px;
+}
+
+.history-header h1 {
+  margin-bottom: 14px;
+}
+
+.history-header p {
+  margin: 0;
+}
+
+.history-clear-button {
+  flex: 0 0 auto;
+}
+
+.history-storage-note {
+  margin: 0 0 28px;
+  padding: 16px 18px;
+  color: var(--green-dark);
+  background: var(--green-soft);
+  border-radius: 10px;
+}
+
+.history-list {
+  display: grid;
+  gap: 20px;
+}
+
+.history-empty {
+  padding: 34px;
+  text-align: center;
+  background: var(--surface);
+  border-radius: 10px;
+}
+
+.history-empty h2 {
+  margin-top: 0;
+}
+
+.history-empty button {
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 0 22px;
+  color: white;
+  background: var(--green);
+  border: 0;
+  border-radius: 10px;
+  font-weight: 600;
 }
 
 .text-button {
@@ -878,7 +985,7 @@ button {
 
   .side-nav {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 6px;
   }
 
@@ -968,8 +1075,23 @@ button {
   }
 
   .text-button {
-    grid-column: 2;
     align-self: end;
+  }
+
+  .history-row-actions {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .history-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .history-clear-button {
+    width: 100%;
   }
 
   .show-all-button {
@@ -989,5 +1111,11 @@ button {
   .text-button {
     grid-column: 1;
     justify-self: start;
+  }
+
+  .history-row-actions {
+    grid-column: 1;
+    grid-row: auto;
+    align-items: flex-start;
   }
 }

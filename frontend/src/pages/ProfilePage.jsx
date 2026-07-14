@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useProfile } from '../context/ProfileContext'
 import { analyseIngredients } from '../services/ingredientService'
+import { updateAnalysis } from '../utils/analysisHistory'
 
 // Plain arrays of option strings for dropdowns that don't need separate
 // "technical value" vs "display label" — the value shown IS the value stored.
@@ -106,14 +107,22 @@ function ProfilePage() {
       setUpdatingAnalysis(true)
       try {
         const results = await analyseIngredients(ingredients, form.conditions ?? [])
+        const analysisContext = {
+          ...(returnToResults.analysisContext ?? {}),
+          selectedConditions: form.conditions ?? []
+        }
+
+        // Re-analysis after a profile change replaces the saved result instead
+        // of creating a second history row for the same formula.
+        if (analysisContext.historyId) {
+          updateAnalysis(analysisContext.historyId, { results, analysisContext })
+        }
+
         navigate('/results', {
           replace: true,
           state: {
             results,
-            analysisContext: {
-              ...(returnToResults.analysisContext ?? {}),
-              selectedConditions: form.conditions ?? []
-            }
+            analysisContext
           }
         })
         return

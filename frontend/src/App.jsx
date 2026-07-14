@@ -4,6 +4,7 @@ import ScanPage from './pages/ScanPage'
 import ManualInputPage from './pages/ManualInputPage'
 import ResultsPage from './pages/ResultsPage'
 import ProfilePage from './pages/ProfilePage'
+import HistoryPage from './pages/HistoryPage'
 import Navbar from './components/Navbar'
 import './App.css'
 
@@ -19,6 +20,7 @@ function App() {
             <Route path="/manual" element={<ManualInputPage />} />
             <Route path="/results" element={<ResultsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/history" element={<HistoryPage />} />
           </Routes>
         </main>
       </div>

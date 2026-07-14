@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { analyseIngredients } from '../services/ingredientService'
 import { useProfile } from '../context/ProfileContext'
-import { parseIngredientList } from '../utils/ingredientParsing'
+import {
+  hasLikelyMissingIngredientSeparators,
+  parseIngredientList
+} from '../utils/ingredientParsing'
+import { saveAnalysis } from '../utils/analysisHistory'
 
 function ManualInputPage() {
   // HOOK: useState('')
@@ -28,6 +32,10 @@ function ManualInputPage() {
   // backend condition flags.
   const { profile } = useProfile()
   const detectedIngredients = parseIngredientList(text)
+  const willInferIngredientBoundaries = hasLikelyMissingIngredientSeparators(
+    text,
+    detectedIngredients
+  )
 
   // This function runs when the user clicks the "Analyse" button.
   // It's async because it needs to wait for a network request to finish.
@@ -44,6 +52,14 @@ function ManualInputPage() {
       // Call the service function and WAIT (await) for the result.
       // This is likely a network request to a server or API.
       const results = await analyseIngredients(ingredients, profile.conditions ?? [])
+      const analysisContext = {
+        source: 'Manual input',
+        selectedConditions: profile.conditions ?? []
+      }
+
+      // History is a convenience feature: a storage failure must not block the
+      // result page, so saveAnalysis returns null instead of throwing.
+      const savedAnalysis = saveAnalysis({ results, analysisContext })
 
       // Move to the "/results" route, carrying the results data along.
       // { state: { results } } attaches this data to the navigation —
@@ -51,10 +67,7 @@ function ManualInputPage() {
       navigate('/results', {
         state: {
           results,
-          analysisContext: {
-            source: 'Manual input',
-            selectedConditions: profile.conditions ?? []
-          }
+          analysisContext: savedAnalysis?.analysisContext ?? analysisContext
         }
       })
     } catch {
@@ -88,7 +101,9 @@ function ManualInputPage() {
       />
       {text.trim() !== '' && (
         <p className="ingredient-count" role="status">
-          {detectedIngredients.length} ingredient{detectedIngredients.length === 1 ? '' : 's'} detected
+          {willInferIngredientBoundaries
+            ? 'Ingredient boundaries will be detected during analysis'
+            : `${detectedIngredients.length} ingredient${detectedIngredients.length === 1 ? '' : 's'} detected`}
         </p>
       )}
       <br />

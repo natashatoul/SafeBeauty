@@ -41,6 +41,23 @@ public class IngredientAnalysisService
         // may send a complete bullet-separated list as one array element.
         var parsedIngredients = IngredientListParser.Parse(ingredients);
 
+        var needsInferredBoundaries = parsedIngredients.Count <= 2
+            && ingredients.Any(IngredientListParser.LooksLikeUnseparatedList);
+
+        if (needsInferredBoundaries)
+        {
+            // Only the unusual no-separator format needs the full vocabulary.
+            // Normal comma/bullet lists keep the existing targeted DB query.
+            var knownNames = await _context.Ingredients
+                .AsNoTracking()
+                .Select(ingredient => ingredient.InciName)
+                .ToListAsync();
+
+            parsedIngredients = parsedIngredients
+                .SelectMany(entry => IngredientListParser.SegmentByKnownNames(entry, knownNames))
+                .ToList();
+        }
+
         var normalizedIngredients = parsedIngredients
             .Select(IngredientNormalizer.Normalize)
             .Where(name => name.Length > 0)

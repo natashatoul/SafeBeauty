@@ -9,6 +9,7 @@ public static class IngredientNormalizer
     private static readonly string[] NonRegulatoryParentheticalSynonyms =
     [
         "(WATER)",
+        "(AQUA)",
         "(FRAGRANCE)",
         "(PARFUM)",
         "(SHEA)",
@@ -21,6 +22,7 @@ public static class IngredientNormalizer
         ["COCO-CAPRYLATE CAPRATE"] = "COCO-CAPRYLATE/CAPRATE",
         ["AQUA / WATER / EAU"] = "AQUA",
         ["AQUA/WATER/EAU"] = "AQUA",
+        ["WATER"] = "AQUA",
         ["COPERNICIA CERIFERA CERA / CARNAUBA WAX / CIRE DE CARNAUBA"] = "COPERNICIA CERIFERA CERA",
         ["BUTYROSPERMUM PARKII BUTTER / SHEA BUTTER"] = "BUTYROSPERMUM PARKII BUTTER"
     };
@@ -37,6 +39,14 @@ public static class IngredientNormalizer
         @"\s*\.?\(\d+/\d+\)\s*[.;,]?\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private static readonly Regex NanoSquareBrackets = new(
+        @"\[\s*NANO\s*\]",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex RepeatedParentheticalName = new(
+        @"^(.+)\s+\(\1\)$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     public static string Normalize(string inciName)
     {
         if (string.IsNullOrWhiteSpace(inciName))
@@ -50,6 +60,7 @@ public static class IngredientNormalizer
         // so "Titanium" would normalize differently on a Turkish server than on an English one.
         // Invariant = "always the same, no matter where it runs".
         var normalized = inciName.Trim().ToUpperInvariant();
+        normalized = NanoSquareBrackets.Replace(normalized, "(NANO)");
 
         // Product ingredient lists often include explanatory synonyms in brackets:
         //   Aqua (Water), Parfum (Fragrance), Butyrospermum Parkii (Shea) Butter.
@@ -84,6 +95,12 @@ public static class IngredientNormalizer
         {
             normalized = normalized.Replace("  ", " ");
         }
+
+        // Some retailer lists repeat the complete botanical name as a trailing
+        // explanation, e.g. "... SEED OIL (... SEED OIL)". This runs after
+        // whitespace cleanup so removal of another synonym cannot leave a
+        // double space that prevents the exact comparison.
+        normalized = RepeatedParentheticalName.Replace(normalized, "$1");
 
         return ExactAliases.GetValueOrDefault(normalized, normalized);
     }

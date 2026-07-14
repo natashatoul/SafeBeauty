@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import homeIcon from '../assets/Home.svg'
 import scanIcon from '../assets/Scan.svg'
 import historyIcon from '../assets/History.svg'
+import manualIcon from '../assets/Manual.svg'
 import profileIcon from '../assets/Profile.svg'
 import desktopLogo from '../assets/Logo_desktop.svg'
 
@@ -13,7 +14,8 @@ function Navbar() {
   const navItems = [
     { to: '/', label: 'Home', icon: homeIcon },
     { to: '/scan', label: 'Scan', icon: scanIcon },
-    { to: '/manual', label: 'Enter list', icon: historyIcon },
+    { to: '/manual', label: 'Enter list', icon: manualIcon },
+    { to: '/history', label: 'History', icon: historyIcon },
     { to: '/profile', label: 'Profile', icon: profileIcon }
   ]
 

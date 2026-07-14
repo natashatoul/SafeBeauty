@@ -8,6 +8,7 @@ import {
 import axios from 'axios'
 import { getBarcodeValidationError } from '../utils/barcodeValidation'
 import { useProfile } from '../context/ProfileContext'
+import { saveAnalysis } from '../utils/analysisHistory'
 
 // Base URL for the backend API, kept in one place so it only needs
 // to change in a single spot (e.g. when deploying to Azure later).
@@ -90,15 +91,19 @@ function ScanPage() {
         `${API_URL}/products/barcode/${encodeURIComponent(barcode)}`,
         { params }
       )
+      const results = response.data.analysis
+      const analysisContext = {
+        source: 'Open Beauty Facts',
+        productName: response.data.productName,
+        barcode: response.data.barcode,
+        selectedConditions
+      }
+      const savedAnalysis = saveAnalysis({ results, analysisContext })
+
       navigate('/results', {
         state: {
-          results: response.data.analysis,
-          analysisContext: {
-            source: 'Open Beauty Facts',
-            productName: response.data.productName,
-            barcode: response.data.barcode,
-            selectedConditions
-          }
+          results,
+          analysisContext: savedAnalysis?.analysisContext ?? analysisContext
         }
       })
       return null

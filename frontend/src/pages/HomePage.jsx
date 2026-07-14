@@ -1,28 +1,25 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-
-const recentAnalyses = [
-  {
-    name: 'Retinol test',
-    date: '9 Jul 2026',
-    ratings: [
-      { label: 'Amber', count: 1, tone: 'amber' },
-      { label: 'Green', count: 2, tone: 'green' },
-      { label: 'Grey', count: 4, tone: 'grey' }
-    ]
-  },
-  {
-    name: 'Retinol serum',
-    date: 'Today',
-    ratings: [
-      { label: 'Amber', count: 1, tone: 'amber' },
-      { label: 'Green', count: 2, tone: 'green' },
-      { label: 'Grey', count: 4, tone: 'grey' }
-    ]
-  }
-]
+import AnalysisHistoryRow from '../components/AnalysisHistoryRow'
+import { getHistory, removeAnalysis } from '../utils/analysisHistory'
 
 function HomePage() {
   const navigate = useNavigate()
+  const [history, setHistory] = useState(getHistory)
+  const recentAnalyses = history.slice(0, 5)
+
+  const viewAnalysis = (item) => {
+    navigate('/results', {
+      state: {
+        results: item.results,
+        analysisContext: item.analysisContext
+      }
+    })
+  }
+
+  const deleteAnalysis = (id) => {
+    if (removeAnalysis(id)) setHistory(getHistory())
+  }
 
   return (
     <div className="home-page">
@@ -58,36 +55,30 @@ function HomePage() {
       <section className="recent-section">
         <div className="section-header">
           <h2>Recent analyses</h2>
-          <button className="show-all-button" type="button">
+          <button
+            className="show-all-button"
+            type="button"
+            onClick={() => navigate('/history')}
+          >
             Show all →
           </button>
         </div>
 
         <div className="recent-list">
-          {recentAnalyses.map((item) => (
-            <article className="recent-row" key={`${item.name}-${item.date}`}>
-              <div className="recent-product">
-                <h3>{item.name}</h3>
-                <p>{item.date}</p>
+          {recentAnalyses.length > 0
+            ? recentAnalyses.map((item) => (
+              <AnalysisHistoryRow
+                item={item}
+                key={item.id}
+                onView={viewAnalysis}
+                onDelete={deleteAnalysis}
+              />
+            ))
+            : (
+              <div className="recent-empty">
+                <p>Your successful analyses will appear here.</p>
               </div>
-
-              <div className="rating-pills" aria-label={`Rating summary for ${item.name}`}>
-                {item.ratings.map((rating) => (
-                  <span className={`rating-pill ${rating.tone}`} key={rating.label}>
-                    {rating.label} {rating.count}
-                  </span>
-                ))}
-              </div>
-
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => navigate('/manual')}
-              >
-                View result →
-              </button>
-            </article>
-          ))}
+            )}
         </div>
 
       </section>
