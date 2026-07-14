@@ -43,10 +43,6 @@ function HistoryPage() {
         )}
       </header>
 
-      <p className="history-storage-note">
-        Analysis history is stored only in this browser and is never sent to our servers.
-      </p>
-
       {history.length > 0 ? (
         <div className="history-list">
           {history.map((item) => (
@@ -67,6 +63,10 @@ function HistoryPage() {
           </button>
         </section>
       )}
+
+      <p className="history-storage-note">
+        * Saved only in this browser. Your analysis history is never sent to our servers.
+      </p>
     </div>
   )
 }

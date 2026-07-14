@@ -43,7 +43,7 @@ function ProfileIngredient({ ingredient, flagType }) {
       <strong>{ingredient.inciName}</strong>
       {flags.map((flag, index) => (
         <p key={`${ingredient.inciName}-${flag.condition}-${index}`}>
-          <span>{flag.condition}</span> — {flag.flagType === 'Beneficial'
+          <span>{formatConditionName(flag.condition)}</span> — {flag.flagType === 'Beneficial'
             ? 'Its broader cosmetic category is marked as potentially relevant in the profile rule set. This does not prove that the ingredient or finished product benefits the condition.'
             : flag.notes}
           {flag.evidenceSource && (
@@ -179,7 +179,7 @@ function ResultsPage() {
         ) : (
           <div className="profile-grid">
             <article className="profile-card concern">
-              <h3 className="section-label">Worth avoiding for your profile</h3>
+              <h3 className="section-label">Ingredients that may not suit your skin</h3>
               {profileSignals.avoid.length > 0
                 ? profileSignals.avoid.map((ingredient) => (
                   <ProfileIngredient key={`avoid-${ingredient.inciName}`} ingredient={ingredient} flagType="Avoid" />
@@ -187,7 +187,7 @@ function ResultsPage() {
                 : <p>No verified “Avoid” flags were found for your selected conditions.</p>}
             </article>
             <article className="profile-card supportive">
-              <h3 className="section-label">Potentially relevant formula roles</h3>
+              <h3 className="section-label">How these ingredients may benefit your skin</h3>
               {profileSignals.beneficial.length > 0
                 ? profileSignals.beneficial.map((ingredient) => (
                   <ProfileIngredient key={`beneficial-${ingredient.inciName}`} ingredient={ingredient} flagType="Beneficial" />

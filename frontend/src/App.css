@@ -1,12 +1,12 @@
 :root {
-  --bg: #f5f2ec;
+  --bg: #f7f5f0;
   --surface: #fffdf8;
-  --sidebar: #fbfaf7;
+  --sidebar: #ffffff;
   --text: #1f211c;
   --muted: #6e7468;
   --green: #5F8561;
   --green-dark: #466f4b;
-  --green-soft: #e5efe2;
+  --green-soft: #e6eee3;
   --border: #d9e4d6;
   --amber: #c97900;
   --amber-soft: #fff2dc;
@@ -142,7 +142,7 @@ button {
   padding: 0 24px;
   color: var(--green-dark);
   background: white;
-  border: 1px solid var(--border);
+  border: 2px solid var(--green-soft);
   border-radius: 10px;
   text-decoration: none;
   font-weight: 600;
@@ -216,7 +216,6 @@ button {
   width: min(100%, 760px);
   padding: 28px;
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 10px;
 }
 
@@ -344,14 +343,12 @@ button {
 .scan-guidance {
   margin-bottom: 22px;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid transparent;
+  background: #ffffff;
 }
 
 .scan-guidance.highlighted {
   color: var(--text);
-  background: var(--amber-soft);
-  border-color: rgba(201, 121, 0, 0.3);
+  background: #ffffff;
 }
 
 .scan-guidance.highlighted p {
@@ -393,13 +390,14 @@ button {
   min-width: 0;
   min-height: 42px;
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 0;
   border-radius: 10px;
   background: white;
 }
 
-.barcode-form input[aria-invalid="true"] {
-  border-color: #d84a4a;
+.barcode-form input:focus-visible {
+  outline: 3px solid rgba(94, 133, 97, 0.28);
+  outline-offset: 2px;
 }
 
 .field-error {
@@ -409,7 +407,7 @@ button {
 }
 
 .hero-section {
-  max-width: 1000px;
+  max-width: 800px;
   margin-bottom: 44px;
 }
 
@@ -418,7 +416,7 @@ button {
 }
 
 .hero-section p {
-  max-width: 1000px;
+  max-width: 800px;
   font-size: 1rem;
   line-height: 1.65;
 }
@@ -492,17 +490,16 @@ button {
   justify-content: center;
   padding: 0 22px;
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: #ffffff;
+  border: 0;
   border-radius: 10px;
   font-weight: 600;
-  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 .profile-choice input:checked + span {
   color: white;
   background: var(--green);
-  border-color: var(--green);
 }
 
 .profile-choice input:focus-visible + span,
@@ -537,17 +534,16 @@ button {
   align-items: center;
   gap: 14px;
   padding: 14px 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: #ffffff;
+  border: 0;
   border-radius: 10px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transition: background-color 160ms ease;
 }
 
 .profile-condition-option.selected {
   background: var(--green-soft);
-  border-color: transparent;
 }
 
 .profile-checkbox {
@@ -618,8 +614,8 @@ button {
   justify-content: space-between;
   gap: 20px;
   padding: 30px;
-  background: var(--surface);
-  border: 2px solid var(--green);
+  background: #ffffff;
+  border: 3px solid var(--green);
   border-radius: 10px;
 }
 
@@ -708,7 +704,7 @@ button {
   align-items: center;
   gap: 32px;
   padding: 14px 32px;
-  background: var(--surface);
+  background: #ffffff;
   border: 1px solid rgba(217, 228, 214, 0.45);
   border-radius: 10px;
 }
@@ -812,19 +808,20 @@ button {
 }
 
 .history-storage-note {
-  margin: 0 0 28px;
-  padding: 16px 18px;
-  color: var(--green-dark);
-  background: var(--green-soft);
-  border-radius: 10px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
 }
 
 .history-list {
   display: grid;
   gap: 20px;
+  margin-bottom: 20px;
 }
 
 .history-empty {
+  margin-bottom: 20px;
   padding: 34px;
   text-align: center;
   background: var(--surface);
@@ -1030,6 +1027,7 @@ button {
 }
 
 .profile-grid {
+  align-items: start;
   margin-bottom: 16px;
 }
 
