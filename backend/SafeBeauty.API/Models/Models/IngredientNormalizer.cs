@@ -47,6 +47,14 @@ public static class IngredientNormalizer
         @"^(.+)\s+\(\1\)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private static readonly Regex BotanicalCommonName = new(
+        @"^(?<latin>[A-Z][A-Z.'-]+\s+[A-Z][A-Z.'-]+)\s+\((?!NANO\b)[A-Z][A-Z '\-]+\)\s+(?<part>BARK|BUD|BULB|BUTTER|EXTRACT|FLOWER|FRUIT|GERM|LEAF|OIL|PEEL|RESIN|RHIZOME|ROOT|SEED|STEM|WATER)\b(?<remainder>.*)$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex ColourIndexAlias = new(
+        @"^.+?\s+\*?\(\s*(?<ci>CI\s+\d{5})\s*\)\*?$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     public static string Normalize(string inciName)
     {
         if (string.IsNullOrWhiteSpace(inciName))
@@ -61,6 +69,16 @@ public static class IngredientNormalizer
         // Invariant = "always the same, no matter where it runs".
         var normalized = inciName.Trim().ToUpperInvariant();
         normalized = NanoSquareBrackets.Replace(normalized, "(NANO)");
+
+        // A backslash is not part of INCI nomenclature. Brand labels use it to
+        // print the same ingredient in several languages, for example
+        // "Water\Aqua\Eau" or "Hordeum Vulgare Extract\Extrait d'Orge".
+        // Keep the first label and continue normalising it below.
+        var translatedLabelSeparator = normalized.IndexOf('\\');
+        if (translatedLabelSeparator >= 0)
+        {
+            normalized = normalized[..translatedLabelSeparator].Trim();
+        }
 
         // Product ingredient lists often include explanatory synonyms in brackets:
         //   Aqua (Water), Parfum (Fragrance), Butyrospermum Parkii (Shea) Butter.
@@ -95,6 +113,20 @@ public static class IngredientNormalizer
         {
             normalized = normalized.Replace("  ", " ");
         }
+
+        // Retailer ingredient lists often insert a common English plant name
+        // into an otherwise canonical botanical INCI name. Only remove this
+        // explanatory bracket when it follows a Latin binomial and is followed
+        // by a recognised plant-part/form suffix. Regulatory qualifiers such
+        // as "(NANO)" therefore remain intact.
+        normalized = BotanicalCommonName.Replace(
+            normalized,
+            "${latin} ${part}${remainder}");
+
+        // Colour labels may combine a consumer-friendly name with the official
+        // Colour Index identifier, e.g. "Yellow 5 (CI 19140)". The CI number is
+        // the canonical database name and is more precise than the prefix.
+        normalized = ColourIndexAlias.Replace(normalized, "${ci}");
 
         // Some retailer lists repeat the complete botanical name as a trailing
         // explanation, e.g. "... SEED OIL (... SEED OIL)". This runs after
