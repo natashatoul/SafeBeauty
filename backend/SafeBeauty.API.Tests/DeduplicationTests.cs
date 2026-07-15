@@ -114,6 +114,44 @@ public class DeduplicationTests
     }
 
     [Fact]
+    public async Task RunAsync_PrefersDuplicateWithFunctionMetadata()
+    {
+        // Arrange: CosIng may contain a synonym-like row without functions and
+        // a later canonical row with useful function metadata.
+        using var database = new TestDatabase();
+        var context = database.Context;
+
+        context.Ingredients.AddRange(
+            new Ingredient
+            {
+                InciName = "CERA MICROCRISTALLINA",
+                SafetyRating = SafetyRating.Grey
+            },
+            new Ingredient
+            {
+                InciName = "MICROCRYSTALLINE WAX",
+                Function = "BINDING, BULKING, EMULSION STABILISING, VISCOSITY CONTROLLING",
+                SafetyRating = SafetyRating.Grey
+            });
+        await context.SaveChangesAsync();
+
+        var service = new IngredientDeduplicationService(
+            context,
+            NullLogger<IngredientDeduplicationService>.Instance);
+
+        // Act
+        await service.RunAsync();
+
+        context.ChangeTracker.Clear();
+        var survivor = await context.Ingredients.SingleAsync();
+
+        // Assert
+        Assert.Equal("MICROCRYSTALLINE WAX", survivor.InciName);
+        Assert.Equal("MICROCRYSTALLINE WAX", survivor.NormalizedInciName);
+        Assert.Contains("VISCOSITY CONTROLLING", survivor.Function);
+    }
+
+    [Fact]
     public async Task RunAsync_PreservesDistinctRestrictions_FromTheSameAnnex()
     {
         // Arrange

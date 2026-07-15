@@ -149,6 +149,7 @@ public class ProductsController : ControllerBase
         {
             ProductName = productName,
             Barcode = barcode,
+            SourceIngredients = ingredientNames,
             Analysis = analysis
         };
     }

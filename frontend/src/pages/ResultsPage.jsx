@@ -96,12 +96,24 @@ function ResultsPage() {
   const totalIngredients = totalKnown + totalUnknown
   const coverage = totalIngredients > 0 ? Math.round((totalKnown / totalIngredients) * 100) : 0
   const uncertainInput = totalIngredients > 0 && totalUnknown / totalIngredients >= 0.25
+  const isBarcodeAnalysis = context.source === 'Open Beauty Facts'
+  const hasEditableSourceIngredients = Array.isArray(context.sourceIngredients)
+    && context.sourceIngredients.length > 0
   const formulaGroups = getFormulaGroups(knownIngredients)
   const profileSignals = getProfileSignals(knownIngredients)
   const uvOverview = getUvOverview(knownIngredients)
   const selectedConditions = context.selectedConditions ?? []
   const regulatoryOnly = uniqueIngredients(profileSignals.regulatory.filter((ingredient) =>
     !profileSignals.avoid.some((avoidIngredient) => avoidIngredient.inciName === ingredient.inciName)))
+  const openManualInput = () => navigate('/manual', {
+    state: {
+      initialIngredients: context.sourceIngredients,
+      draftSource: context.source,
+      productName: context.productName,
+      barcode: context.barcode
+    }
+  })
+  const openEmptyManualInput = () => navigate('/manual')
 
   return (
     <div className="results-page">
@@ -122,15 +134,21 @@ function ResultsPage() {
       {uncertainInput && (
         <section className="quality-banner" role="alert">
           <div>
-            <strong>Please check the ingredient list</strong>
+            <strong>Some ingredients could not be checked</strong>
             <p>
-              {totalUnknown} of {totalIngredients} entries could not be verified. The source may be
-              incomplete or contain OCR/parsing errors, so the interpretation may miss important details.
+              {totalUnknown} of {totalIngredients} entries were not found in the verified database.
+              {context.source === 'Open Beauty Facts'
+                ? ' The barcode data may be incomplete or incorrectly split, so please compare it with the product label.'
+                : ' Please check spelling and separators, or compare the list with the product label.'}
             </p>
           </div>
-          {context.source !== 'Manual input' && (
-            <button type="button" className="secondary-button" onClick={() => navigate('/manual')}>
-              Enter ingredients manually
+          {isBarcodeAnalysis && (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={hasEditableSourceIngredients ? openManualInput : openEmptyManualInput}
+            >
+              {hasEditableSourceIngredients ? 'Edit in manual input' : 'Enter ingredients manually'}
             </button>
           )}
         </section>
@@ -294,9 +312,13 @@ function ResultsPage() {
             silently corrected or used as verified facts in the AI interpretation.
           </p>
         </div>
-        {context.source !== 'Manual input' && (
-          <button type="button" className="secondary-button" onClick={() => navigate('/manual')}>
-            Check with manual input
+        {isBarcodeAnalysis && (
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={hasEditableSourceIngredients ? openManualInput : openEmptyManualInput}
+          >
+            {hasEditableSourceIngredients ? 'Edit in manual input' : 'Check with manual input'}
           </button>
         )}
       </section>

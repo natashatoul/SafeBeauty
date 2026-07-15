@@ -31,6 +31,7 @@ public static class IngredientListParser
 
     public static List<string> Parse(IEnumerable<string> entries) => entries
         .SelectMany(SplitEntry)
+        .ApplyKnownFragmentJoins()
         .Where(entry => !string.IsNullOrWhiteSpace(entry))
         .ToList();
 
@@ -162,6 +163,52 @@ public static class IngredientListParser
         if (unknownTokens.Count == 0) return;
         result.Add(string.Join(' ', unknownTokens));
         unknownTokens.Clear();
+    }
+
+    private static List<string> ApplyKnownFragmentJoins(this IEnumerable<string> entries)
+    {
+        var result = new List<string>();
+        var items = entries.ToList();
+
+        for (var index = 0; index < items.Count; index++)
+        {
+            var current = items[index];
+            var next = index + 1 < items.Count ? items[index + 1] : string.Empty;
+            var currentNormalized = IngredientNormalizer.Normalize(current);
+            var nextNormalized = IngredientNormalizer.Normalize(next);
+
+            if (currentNormalized == "C20-40 PA" && nextNormalized == "RETH-10")
+            {
+                result.Add("C20-40 PARETH-10");
+                index++;
+                continue;
+            }
+
+            if (currentNormalized == "SODIUM HYDROX" && nextNormalized == "DE")
+            {
+                result.Add("SODIUM HYDROXIDE");
+                index++;
+                continue;
+            }
+
+            if (currentNormalized == "TRIETHA" && nextNormalized == "NOLAMINE")
+            {
+                result.Add("TRIETHANOLAMINE");
+                index++;
+                continue;
+            }
+
+            if (currentNormalized == "PARAF" && nextNormalized == "FINUM LIQUIDUM")
+            {
+                result.Add("PARAFFINUM LIQUIDUM");
+                index++;
+                continue;
+            }
+
+            result.Add(current);
+        }
+
+        return result;
     }
 
     private sealed record Candidate(string Name, string[] Tokens);

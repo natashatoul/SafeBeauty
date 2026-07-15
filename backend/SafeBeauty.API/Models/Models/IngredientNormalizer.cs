@@ -25,6 +25,10 @@ public static class IngredientNormalizer
         ["WATER"] = "AQUA",
         ["WATER(AQUA/EAU)"] = "AQUA",
         ["WATER (AQUA/EAU)"] = "AQUA",
+        ["AVENE AQUA"] = "AQUA",
+        ["AVENE THERMAL SPRING WATER"] = "AQUA",
+        ["BEES WAX"] = "BEESWAX",
+        ["CERA MICROCRISTALLINA"] = "MICROCRYSTALLINE WAX",
         ["COPERNICIA CERIFERA CERA / CARNAUBA WAX / CIRE DE CARNAUBA"] = "COPERNICIA CERIFERA CERA",
         ["BUTYROSPERMUM PARKII BUTTER / SHEA BUTTER"] = "BUTYROSPERMUM PARKII BUTTER"
     };

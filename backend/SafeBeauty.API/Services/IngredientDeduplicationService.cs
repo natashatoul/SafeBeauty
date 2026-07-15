@@ -97,8 +97,16 @@ public class IngredientDeduplicationService
         foreach (var group in duplicateIngredients
                      .GroupBy(i => i.NormalizedInciName, StringComparer.Ordinal))
         {
-            // The "survivor" is the oldest row (smallest Id); the rest are duplicates to remove.
-            var ordered = group.OrderBy(i => i.Id).ToList();
+            // The "survivor" should be the most informative row. Some official
+            // sources contain synonym-like duplicates where the older row has
+            // little useful metadata, while a later canonical row has functions
+            // or regulatory mappings, e.g. CERA MICROCRISTALLINA and
+            // MICROCRYSTALLINE WAX. Fall back to the oldest Id only when the
+            // records are equally informative.
+            var ordered = group
+                .OrderByDescending(GetIngredientDataQualityScore)
+                .ThenBy(i => i.Id)
+                .ToList();
             var survivor = ordered.First();
             var duplicates = ordered.Skip(1).ToList();
             survivor.InciName = survivor.NormalizedInciName;
@@ -214,6 +222,31 @@ public class IngredientDeduplicationService
         SafetyRating.Green => 1,
         _ => 0
     };
+
+    private static int GetIngredientDataQualityScore(Ingredient ingredient)
+    {
+        var score = 0;
+
+        if (!string.IsNullOrWhiteSpace(ingredient.Function))
+        {
+            score += 100;
+        }
+
+        score += ingredient.CategoryMappings.Count * 20;
+        score += ingredient.AnnexRestrictions.Count * 20;
+
+        if (!string.IsNullOrWhiteSpace(ingredient.CasNumber))
+        {
+            score += 5;
+        }
+
+        if (!string.IsNullOrWhiteSpace(ingredient.Source))
+        {
+            score += 1;
+        }
+
+        return score;
+    }
 
     private static int GetMappingPriority(string mappingType) =>
         mappingType switch

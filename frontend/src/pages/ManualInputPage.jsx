@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { analyseIngredients } from '../services/ingredientService'
 import { useProfile } from '../context/ProfileContext'
 import {
@@ -8,7 +8,36 @@ import {
 } from '../utils/ingredientParsing'
 import { saveAnalysis } from '../utils/analysisHistory'
 
+const normaliseDraftEntry = (value = '') => value
+  .trim()
+  .toUpperCase()
+  .replace(/\s+/g, ' ')
+
+const splitBarcodeDraftEntries = (entries, unknownIngredients) => {
+  const unknownNames = new Set((unknownIngredients ?? [])
+    .map((item) => normaliseDraftEntry(item.name)))
+
+  return entries.reduce((groups, entry) => {
+    const name = entry.trim()
+    if (!name) return groups
+
+    const target = unknownNames.has(normaliseDraftEntry(name))
+      ? groups.needsChecking
+      : groups.matched
+    target.push(name)
+    return groups
+  }, { matched: [], needsChecking: [] })
+}
+
 function ManualInputPage() {
+  const { state } = useLocation()
+  const initialText = Array.isArray(state?.initialIngredients)
+    ? state.initialIngredients.join(',\n')
+    : state?.initialText ?? ''
+  const isBarcodeDraft = state?.draftSource === 'Open Beauty Facts'
+  const lowCoverageReview = state?.lowCoverageReview
+  const originalBarcodeResult = state?.originalBarcodeResult
+
   // HOOK: useState('')
   // Creates a piece of state called "text", starting as an empty string.
   // useState returns an array with exactly 2 items:
@@ -16,7 +45,7 @@ function ManualInputPage() {
   //   2) a function to update that value (setText)
   // Whenever setText() is called, React re-renders this component
   // so the screen reflects the new value.
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   const textareaRef = useRef(null)
 
   // HOOK: useState(false)
@@ -37,6 +66,12 @@ function ManualInputPage() {
     text,
     detectedIngredients
   )
+  const barcodeDraftGroups = isBarcodeDraft
+    ? splitBarcodeDraftEntries(
+      detectedIngredients,
+      originalBarcodeResult?.results?.unknownIngredients
+    )
+    : { matched: [], needsChecking: [] }
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current
@@ -65,7 +100,9 @@ function ManualInputPage() {
         gender: profile.gender
       })
       const analysisContext = {
-        source: 'Manual input',
+        source: isBarcodeDraft ? 'Manual input (edited barcode list)' : 'Manual input',
+        productName: state?.productName,
+        barcode: state?.barcode,
         selectedConditions: profile.conditions ?? [],
         ageGroup: profile.ageGroup,
         gender: profile.gender
@@ -100,12 +137,52 @@ function ManualInputPage() {
     await handleAnalyse()
   }
 
+  const viewBarcodeResultAnyway = () => {
+    if (!originalBarcodeResult?.results) return
+
+    const savedAnalysis = saveAnalysis({
+      results: originalBarcodeResult.results,
+      analysisContext: originalBarcodeResult.analysisContext ?? {}
+    })
+
+    navigate('/results', {
+      state: {
+        results: originalBarcodeResult.results,
+        analysisContext: savedAnalysis?.analysisContext
+          ?? originalBarcodeResult.analysisContext
+          ?? {}
+      }
+    })
+  }
+
   return (
     <div className="manual-page">
       <header className="manual-page-header">
-        <h1>Enter Ingredients</h1>
-        <p>Paste the ingredient list separated by commas, bullets, semicolons or new lines.</p>
+        <h1>{isBarcodeDraft ? 'Edit Barcode Ingredients' : 'Enter Ingredients'}</h1>
+        <p>
+          {isBarcodeDraft
+            ? 'These entries came from Open Beauty Facts. Edit spelling, separators, or split fragments before analysing again.'
+            : 'Paste the ingredient list separated by commas, bullets, semicolons or new lines.'}
+        </p>
       </header>
+
+      {isBarcodeDraft && lowCoverageReview && (
+        <section className="manual-review-warning" role="alert">
+          <div>
+            <strong>Check the barcode ingredient list</strong>
+            <p>
+              Only {lowCoverageReview.knownCount} of {lowCoverageReview.totalCount} barcode entries
+              were matched to the verified database. The source may contain misspelled or incorrectly
+              split ingredients, so review the list before analysing again.
+            </p>
+          </div>
+          {originalBarcodeResult?.results && (
+            <button type="button" className="secondary-button" onClick={viewBarcodeResultAnyway}>
+              View barcode result anyway
+            </button>
+          )}
+        </section>
+      )}
 
       <form className="manual-form-card" onSubmit={handleSubmit}>
         <label className="manual-input-label" htmlFor="ingredient-list">Ingredient list</label>
@@ -118,6 +195,47 @@ function ManualInputPage() {
           placeholder="e.g. Aqua, Glycerin, Niacinamide..."
           rows={8}
         />
+
+        {isBarcodeDraft && (
+          <section className="barcode-draft-review" aria-label="Barcode ingredient match review">
+            <article className="barcode-draft-column barcode-draft-column--warning">
+              <h3>Needs checking ({barcodeDraftGroups.needsChecking.length})</h3>
+              <p>These entries were not matched in the barcode analysis. Look for broken words or fragments.</p>
+              <p className="barcode-draft-tip">
+                Compare them with the product label and join broken fragments into full INCI names.
+                If a word is split across two lines on the packaging with a hyphen, remove that hyphen:
+                for example, PROPY- + LENE GLYCOL should become PROPYLENE GLYCOL.
+                Avoid deleting entries unless you can confirm they are not ingredients.
+              </p>
+              {barcodeDraftGroups.needsChecking.length > 0 ? (
+                <div className="barcode-draft-chip-list">
+                  {barcodeDraftGroups.needsChecking.map((entry, index) => (
+                    <span key={`needs-checking-${entry}-${index}`}>{entry}</span>
+                  ))}
+                </div>
+              ) : (
+                <p className="barcode-draft-empty">No unmatched entries in the current draft.</p>
+              )}
+            </article>
+
+            <article className="barcode-draft-column">
+              <h3>Matched ({barcodeDraftGroups.matched.length})</h3>
+              <p>These entries were recognised or normalised during the barcode analysis.</p>
+              {barcodeDraftGroups.matched.length > 0 ? (
+                <div className="barcode-draft-chip-list">
+                  {barcodeDraftGroups.matched.slice(0, 16).map((entry, index) => (
+                    <span key={`matched-${entry}-${index}`}>{entry}</span>
+                  ))}
+                  {barcodeDraftGroups.matched.length > 16 && (
+                    <span>+{barcodeDraftGroups.matched.length - 16} more</span>
+                  )}
+                </div>
+              ) : (
+                <p className="barcode-draft-empty">No matched entries yet.</p>
+              )}
+            </article>
+          </section>
+        )}
 
         <div className="manual-form-actions">
           {text.trim() !== '' && (

@@ -28,6 +28,10 @@ function AnalysisHistoryRow({ item, onView, onDelete }) {
       ).length
     }))
     .filter((rating) => rating.count > 0)
+  const ratingPlaceholders = Array.from(
+    { length: Math.max(0, RATING_ORDER.length - ratings.length) },
+    (_, index) => index
+  )
 
   return (
     <article className="recent-row">
@@ -37,16 +41,29 @@ function AnalysisHistoryRow({ item, onView, onDelete }) {
       </div>
 
       <div className="rating-pills" aria-label={`Rating summary for ${productName}`}>
-        {ratings.length > 0
-          ? ratings.map((rating) => (
-            <span
-              className={`rating-pill ${rating.label.toLowerCase()}`}
-              key={rating.label}
-            >
-              {rating.label} {rating.count}
-            </span>
-          ))
-          : <span className="history-no-ratings">No verified ratings</span>}
+        {ratings.length > 0 ? (
+          <>
+            {ratings.map((rating) => (
+              <span
+                className={`rating-pill ${rating.label.toLowerCase()}`}
+                key={rating.label}
+                aria-label={`${rating.label} ${rating.count}`}
+              >
+                <span className="rating-pill-label">{rating.label}</span>
+                <span className="rating-pill-count">{rating.count}</span>
+              </span>
+            ))}
+            {ratingPlaceholders.map((index) => (
+              <span
+                className="rating-pill-placeholder"
+                key={`rating-placeholder-${index}`}
+                aria-hidden="true"
+              />
+            ))}
+          </>
+        ) : (
+          <span className="history-no-ratings">No verified ratings</span>
+        )}
       </div>
 
       <div className="history-row-actions">

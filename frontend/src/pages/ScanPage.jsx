@@ -14,6 +14,7 @@ import { saveAnalysis } from '../utils/analysisHistory'
 // to change in a single spot (e.g. when deploying to Azure later).
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const EMPTY_CONDITIONS = []
+const BARCODE_REVIEW_COVERAGE_THRESHOLD = 80
 
 const BARCODE_FORMATS = [
   Html5QrcodeSupportedFormats.EAN_13,
@@ -94,14 +95,47 @@ function ScanPage() {
         { params }
       )
       const results = response.data.analysis
+      const sourceIngredients = response.data.sourceIngredients ?? []
       const analysisContext = {
         source: 'Open Beauty Facts',
         productName: response.data.productName,
         barcode: response.data.barcode,
+        sourceIngredients,
         selectedConditions,
         ageGroup: profile.ageGroup,
         gender: profile.gender
       }
+      const knownCount = results.results?.length ?? 0
+      const unknownCount = results.unknownIngredients?.length ?? 0
+      const totalCount = knownCount + unknownCount
+      const coverage = totalCount > 0 ? Math.round((knownCount / totalCount) * 100) : 0
+
+      if (
+        sourceIngredients.length > 0 &&
+        totalCount > 0 &&
+        coverage < BARCODE_REVIEW_COVERAGE_THRESHOLD
+      ) {
+        navigate('/manual', {
+          state: {
+            initialIngredients: sourceIngredients,
+            draftSource: 'Open Beauty Facts',
+            productName: response.data.productName,
+            barcode: response.data.barcode,
+            lowCoverageReview: {
+              coverage,
+              knownCount,
+              unknownCount,
+              totalCount
+            },
+            originalBarcodeResult: {
+              results,
+              analysisContext
+            }
+          }
+        })
+        return null
+      }
+
       const savedAnalysis = saveAnalysis({ results, analysisContext })
 
       navigate('/results', {

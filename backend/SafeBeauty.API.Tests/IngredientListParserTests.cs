@@ -65,6 +65,18 @@ public class IngredientListParserTests
     }
 
     [Fact]
+    public void Parse_JoinsKnownOcrFragmentsFromBarcodeSource()
+    {
+        var result = IngredientListParser.Parse([
+            "C20-40 PA,RETH-10,SODIUM HYDROX,DE,TRIETHA,NOLAMINE,PARAF,FINUM LIQUIDUM"
+        ]);
+
+        Assert.Equal(
+            ["C20-40 PARETH-10", "SODIUM HYDROXIDE", "TRIETHANOLAMINE", "PARAFFINUM LIQUIDUM"],
+            result);
+    }
+
+    [Fact]
     public void Parse_SplitsFullStopSeparatedWebsiteList()
     {
         var result = IngredientListParser.Parse([
