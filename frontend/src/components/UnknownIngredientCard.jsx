@@ -4,6 +4,7 @@
 // because there's no safety data to show for these.
 function UnknownIngredientCard({ name, aiLabel, confidence }) {
   const hasAiEstimate = aiLabel && Number.isFinite(confidence)
+  const aiClassificationSkipped = aiLabel === 'Unknown' && confidence === 0
 
   return (
     <article className="technical-ingredient technical-ingredient--grey">
@@ -11,7 +12,14 @@ function UnknownIngredientCard({ name, aiLabel, confidence }) {
         <strong>{name}</strong>
         <span>Not verified</span>
       </div>
-      {hasAiEstimate && (
+      {aiClassificationSkipped ? (
+        <div className="technical-ingredient-details">
+          <p>Not classified by AI</p>
+          <small className="technical-ingredient-note">
+            The source contains too many unmatched entries, so SafeBeauty avoids guessing.
+          </small>
+        </div>
+      ) : hasAiEstimate && (
         <div className="technical-ingredient-details">
           <p>AI estimate: {aiLabel} ({Math.round(confidence * 100)}%)</p>
           <small className="technical-ingredient-note">

@@ -35,6 +35,36 @@ public class IngredientListParserTests
     }
 
     [Fact]
+    public void Parse_SplitsMiddleDotSeparatedAsianLabelList()
+    {
+        var result = IngredientListParser.Parse([
+            "DIMETHICONE･WATER(AQUA/EAU)･DIISOPROPYL SEBACATE"
+        ]);
+
+        Assert.Equal(["DIMETHICONE", "WATER(AQUA/EAU)", "DIISOPROPYL SEBACATE"], result);
+    }
+
+    [Fact]
+    public void Parse_PreservesNumericCommaInsideChemicalName()
+    {
+        var result = IngredientListParser.Parse([
+            "Oil,1,2-Hexanediol,Tocopherol"
+        ]);
+
+        Assert.Equal(["Oil", "1,2-Hexanediol", "Tocopherol"], result);
+    }
+
+    [Fact]
+    public void Parse_PreservesBotanicalSuffixSplitByCopiedLineBreak()
+    {
+        var result = IngredientListParser.Parse([
+            "Simmondsia Chinensis (Jojoba) Seed\nOil,1,2-Hexanediol"
+        ]);
+
+        Assert.Equal(["Simmondsia Chinensis (Jojoba) Seed Oil", "1,2-Hexanediol"], result);
+    }
+
+    [Fact]
     public void Parse_SplitsFullStopSeparatedWebsiteList()
     {
         var result = IngredientListParser.Parse([

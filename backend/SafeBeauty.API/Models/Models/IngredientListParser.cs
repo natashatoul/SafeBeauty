@@ -4,10 +4,17 @@ namespace SafeBeauty.API.Models;
 
 public static class IngredientListParser
 {
-    private static readonly char[] Separators = [',', '•', ';', '\r', '\n'];
+    private static readonly char[] Separators = [',', '•', '･', '・', '·', ';', '\r', '\n'];
     private const char ProtectedDot = '\u2024';
+    private const char ProtectedComma = '\u2063';
     private static readonly Regex FilAbbreviation = new(
         @"F\.I\.L\.",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex NumericComma = new(
+        @"(?<=\d),(?=\d)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex CompoundSuffixLineBreak = new(
+        @"\b(SEED|FRUIT|KERNEL|LEAF|ROOT|FLOWER|STEM)\s*[\r\n]+\s*(OIL|EXTRACT|WATER|WAX|BUTTER)\b",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex PeriodSeparator = new(
         @"\.\s+(?=[A-Za-z])",
@@ -109,14 +116,20 @@ public static class IngredientListParser
 
     private static IEnumerable<string> SplitEntry(string? entry)
     {
-        var protectedEntry = FilAbbreviation.Replace(
+        var protectedEntry = CompoundSuffixLineBreak.Replace(
             entry ?? string.Empty,
+            "$1 $2");
+        protectedEntry = FilAbbreviation.Replace(
+            protectedEntry,
             match => match.Value.Replace('.', ProtectedDot));
+        protectedEntry = NumericComma.Replace(
+            protectedEntry,
+            ProtectedComma.ToString());
 
         return protectedEntry
             .Split(Separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .SelectMany(part => PeriodSeparator.Split(part))
-            .Select(part => part.Replace(ProtectedDot, '.').Trim())
+            .Select(part => part.Replace(ProtectedDot, '.').Replace(ProtectedComma, ',').Trim())
             .Where(part => part.Length > 0);
     }
 

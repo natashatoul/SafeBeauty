@@ -123,7 +123,7 @@ function ManualInputPage() {
           {text.trim() !== '' && (
             <p className="ingredient-count" role="status">
               {willInferIngredientBoundaries
-                ? 'Ingredient boundaries will be detected during analysis'
+                ? 'This list may have missing separators. SafeBeauty will try to split it automatically.'
                 : `${detectedIngredients.length} ingredient${detectedIngredients.length === 1 ? '' : 's'} detected`}
             </p>
           )}

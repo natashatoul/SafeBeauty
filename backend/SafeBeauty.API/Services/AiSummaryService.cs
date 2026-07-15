@@ -150,7 +150,7 @@ public class AiSummaryService
 
                 if (!string.IsNullOrWhiteSpace(text))
                 {
-                    var summary = text.Trim();
+                    var summary = CleanSummaryOpening(text.Trim());
                     if (ViolatesSafetyBoundary(summary) || ContradictsProfileFlags(summary, results))
                     {
                         // Do not include the rejected model text in logs. It may contain
@@ -212,6 +212,7 @@ public class AiSummaryService
     "You are a cosmetic ingredient assistant. Using ONLY the verified analysis facts supplied by the user, " +
     "write one cohesive consumer-friendly paragraph of about 140-190 words that explains the overall formula, " +
     "its main cosmetic roles, and what matters for the selected profile. Do not use headings or bullet points. " +
+    "Start with a complete standalone sentence. Do not begin with transition phrases such as 'It also', 'Additionally', 'Moreover', or 'Furthermore'. " +
 
     "This is cosmetic ingredient information, not medical advice. " +
     "Do not claim that the product treats, heals, soothes, calms, alleviates, prevents, cures, improves, or manages any medical condition or symptoms. " +
@@ -428,6 +429,33 @@ public class AiSummaryService
         return ContradictsBeneficialFlags(summary, results);
     }
 
+    private static string CleanSummaryOpening(string summary)
+    {
+        var cleaned = summary.Trim();
+
+        cleaned = Regex.Replace(
+            cleaned,
+            @"^(?:It also includes|Also includes)\b",
+            "This formula includes",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        cleaned = Regex.Replace(
+            cleaned,
+            @"^(?:Additionally|Moreover|Furthermore|Also),?\s+",
+            string.Empty,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        if (cleaned.StartsWith("includes ", StringComparison.OrdinalIgnoreCase))
+        {
+            cleaned = "This formula " + cleaned;
+        }
+
+        cleaned = cleaned.Trim();
+        return cleaned.Length == 0
+            ? cleaned
+            : char.ToUpperInvariant(cleaned[0]) + cleaned[1..];
+    }
+
     private static bool ContradictsBeneficialFlags(string summary, AnalyseResponse results)
     {
         var beneficialNames = results.Results
@@ -507,8 +535,11 @@ public class AiSummaryService
 
         if (emollients.Count > 0)
         {
+            var prefix = paragraphs.Count == 0
+                ? "This formula includes"
+                : "It also includes";
             paragraphs.Add(
-                $"It also includes emollients such as {string.Join(", ", emollients)}, which are commonly used to soften the skin surface and reduce moisture loss.");
+                $"{prefix} emollients such as {string.Join(", ", emollients)}, which are commonly used to soften the skin surface and reduce moisture loss.");
         }
 
         if (humectants.Count > 0)

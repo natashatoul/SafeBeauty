@@ -23,6 +23,8 @@ public static class IngredientNormalizer
         ["AQUA / WATER / EAU"] = "AQUA",
         ["AQUA/WATER/EAU"] = "AQUA",
         ["WATER"] = "AQUA",
+        ["WATER(AQUA/EAU)"] = "AQUA",
+        ["WATER (AQUA/EAU)"] = "AQUA",
         ["COPERNICIA CERIFERA CERA / CARNAUBA WAX / CIRE DE CARNAUBA"] = "COPERNICIA CERIFERA CERA",
         ["BUTYROSPERMUM PARKII BUTTER / SHEA BUTTER"] = "BUTYROSPERMUM PARKII BUTTER"
     };
@@ -48,7 +50,7 @@ public static class IngredientNormalizer
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex BotanicalCommonName = new(
-        @"^(?<latin>[A-Z][A-Z.'-]+\s+[A-Z][A-Z.'-]+)\s+\((?!NANO\b)[A-Z][A-Z '\-]+\)\s+(?<part>BARK|BUD|BULB|BUTTER|EXTRACT|FLOWER|FRUIT|GERM|LEAF|OIL|PEEL|RESIN|RHIZOME|ROOT|SEED|STEM|WATER)\b(?<remainder>.*)$",
+        @"^(?<latin>[A-Z][A-Z.'-]+\s+[A-Z][A-Z.'-]+)\s+\((?!NANO\b)[A-Z][A-Z '\-]+\)\s+(?<part>BARK|BUD|BULB|BUTTER|EXTRACT|FLOWER|FRUIT|GERM|KERNEL|LEAF|OIL|PEEL|RESIN|RHIZOME|ROOT|SEED|STEM|WATER)\b(?<remainder>.*)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex ColourIndexAlias = new(

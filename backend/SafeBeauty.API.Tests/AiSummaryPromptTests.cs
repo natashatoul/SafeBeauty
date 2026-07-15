@@ -239,4 +239,46 @@ public class AiSummaryPromptTests
         Assert.Contains("PARFUM was specifically flagged", summary);
         Assert.DoesNotContain("PARFUM were", summary);
     }
+
+    [Fact]
+    public void BuildFallbackSummary_DoesNotStartWithContinuationPhrase()
+    {
+        var response = new AnalyseResponse
+        {
+            Results =
+            [
+                new IngredientResultDto
+                {
+                    InciName = "GLYCOL DISTEARATE",
+                    Category = "Emollients"
+                }
+            ]
+        };
+        var method = typeof(AiSummaryService).GetMethod(
+            "BuildFallbackSummary",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(method);
+        var summary = (string)method!.Invoke(null, [response])!;
+
+        Assert.StartsWith("This formula includes emollients", summary);
+        Assert.False(summary.StartsWith("It also", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("It also includes emollients such as GLYCOL DISTEARATE.", "This formula includes emollients such as GLYCOL DISTEARATE.")]
+    [InlineData("Additionally, humectants such as GLYCERIN are present.", "Humectants such as GLYCERIN are present.")]
+    public void CleanSummaryOpening_RemovesAwkwardOpeningTransitions(
+        string input,
+        string expected)
+    {
+        var method = typeof(AiSummaryService).GetMethod(
+            "CleanSummaryOpening",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.NotNull(method);
+        var summary = (string)method!.Invoke(null, [input])!;
+
+        Assert.Equal(expected, summary);
+    }
 }
