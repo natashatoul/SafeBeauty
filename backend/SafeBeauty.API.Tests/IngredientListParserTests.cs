@@ -77,6 +77,22 @@ public class IngredientListParserTests
     }
 
     [Fact]
+    public void Parse_RepairsStructuredBarcodeFragmentsAndRemovesFilMetadata()
+    {
+        var result = IngredientListParser.Parse([
+            "SHEA BUTTER",
+            "ACRYLATES",
+            "C10-30 ALKYL ACRYLATE CROSSPOLYMER",
+            "F.I.L",
+            "Z70028645"
+        ]);
+
+        Assert.Equal(
+            ["SHEA BUTTER", "ACRYLATES/C10-30 ALKYL ACRYLATE CROSSPOLYMER"],
+            result);
+    }
+
+    [Fact]
     public void Parse_SplitsFullStopSeparatedWebsiteList()
     {
         var result = IngredientListParser.Parse([

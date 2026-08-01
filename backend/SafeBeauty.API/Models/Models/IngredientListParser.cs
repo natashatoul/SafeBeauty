@@ -28,6 +28,12 @@ public static class IngredientListParser
     private static readonly Regex TitaniumNanoSynonym = new(
         @"\bTITANIUM DIOXIDE\s*\[NANO\]\s*/\s*TITANIUM DIOXIDE\b",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex StandaloneFilMarker = new(
+        @"^F\.?\s*I\.?\s*L\.?$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex FormulaReferenceCode = new(
+        @"^[A-Z]\d{6,}(?:/\d+)?$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public static List<string> Parse(IEnumerable<string> entries) => entries
         .SelectMany(SplitEntry)
@@ -176,6 +182,26 @@ public static class IngredientListParser
             var next = index + 1 < items.Count ? items[index + 1] : string.Empty;
             var currentNormalized = IngredientNormalizer.Normalize(current);
             var nextNormalized = IngredientNormalizer.Normalize(next);
+
+            // Open Beauty Facts can split a slash-containing INCI name into
+            // separate structured entries. Reassemble this known polymer before
+            // matching it against the regulatory glossary.
+            if (currentNormalized == "ACRYLATES" &&
+                nextNormalized == "ACRYLATES/C10-30 ALKYL ACRYLATE CROSSPOLYMER")
+            {
+                result.Add("ACRYLATES/C10-30 ALKYL ACRYLATE CROSSPOLYMER");
+                index++;
+                continue;
+            }
+
+            // F.I.L. identifiers are packaging formula references, not cosmetic
+            // ingredients. Some structured barcode records split the marker and
+            // its code (for example F.I.L. + Z70028645) into separate entries.
+            if (StandaloneFilMarker.IsMatch(currentNormalized))
+            {
+                if (FormulaReferenceCode.IsMatch(nextNormalized)) index++;
+                continue;
+            }
 
             if (currentNormalized == "C20-40 PA" && nextNormalized == "RETH-10")
             {

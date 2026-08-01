@@ -25,6 +25,8 @@ public class IngredientNormalizerTests
     [InlineData("Avene Aqua", "AQUA")]
     [InlineData("Avene Thermal Spring Water", "AQUA")]
     [InlineData("Bees Wax", "BEESWAX")]
+    [InlineData("Shea Butter", "BUTYROSPERMUM PARKII BUTTER")]
+    [InlineData("C10-30 Alkyl Acrylate Crosspolymer", "ACRYLATES/C10-30 ALKYL ACRYLATE CROSSPOLYMER")]
     [InlineData("Cera Microcristallina", "MICROCRYSTALLINE WAX")]
     [InlineData("COPERNICIA CERIFERA CERA / CARNAUBA WAX / CIRE DE CARNAUBA", "COPERNICIA CERIFERA CERA")]
     [InlineData("BUTYROSPERMUM PARKII BUTTER / SHEA BUTTER", "BUTYROSPERMUM PARKII BUTTER")]
@@ -44,6 +46,9 @@ public class IngredientNormalizerTests
     [InlineData("Blue 1 (CI 42090)", "CI 42090")]
     [InlineData("Chromium Hydroxide Green *(CI 77289)*", "CI 77289")]
     [InlineData("TOCOPHEROL.(409/011)", "TOCOPHEROL")]
+    [InlineData(
+        "Lactobacillus/Centella Asiatica/Gleditsia Sinensis Thom/Houttuynia CordataExtract/ Phellodendron Amurense Bark/Polygonum CuspidatumRoot/Prunella Vulgaris/Torilis Japonica Extract Ferment Filtrate",
+        "LACTOBACILLUS/CENTELLA ASIATICA/GLEDITSIA SINENSIS THORN/HOUTTUYNIA CORDATA EXTRACT/PHELLODENDRON AMURENSE BARK/POLYGONUM CUSPIDATUM ROOT/PRUNELLA VULGARIS/TORILIS JAPONICA EXTRACT FERMENT FILTRATE")]
     [InlineData("", "")]
     [InlineData("   ", "")]
     [InlineData(null, "")]
