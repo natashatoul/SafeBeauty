@@ -3,6 +3,7 @@ bin/
 obj/
 publish/
 publish-output/
+publish-new/
 *.zip
 *.db
 *.db-shm
@@ -59,3 +60,4 @@ backend/data/*.pdf
 backend/data/*.docx
 
 appsettings.json
+
