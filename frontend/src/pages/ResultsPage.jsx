@@ -99,6 +99,7 @@ function ResultsPage() {
   const isBarcodeAnalysis = context.source === 'Open Beauty Facts'
   const hasEditableSourceIngredients = Array.isArray(context.sourceIngredients)
     && context.sourceIngredients.length > 0
+  const canReviewSourceIngredients = isBarcodeAnalysis || hasEditableSourceIngredients
   const formulaGroups = getFormulaGroups(knownIngredients)
   const profileSignals = getProfileSignals(knownIngredients)
   const uvOverview = getUvOverview(knownIngredients)
@@ -131,7 +132,7 @@ function ResultsPage() {
         </button>
       </div>
 
-      {uncertainInput && (
+      {totalUnknown > 0 && (
         <section className="quality-banner" role="alert">
           <div>
             <strong>Some ingredients could not be checked</strong>
@@ -142,7 +143,7 @@ function ResultsPage() {
                 : ' Please check spelling and separators, or compare the list with the product label.'}
             </p>
           </div>
-          {isBarcodeAnalysis && (
+          {canReviewSourceIngredients && (
             <button
               type="button"
               className="secondary-button"
@@ -312,7 +313,7 @@ function ResultsPage() {
             silently corrected or used as verified facts in the AI interpretation.
           </p>
         </div>
-        {isBarcodeAnalysis && (
+        {canReviewSourceIngredients && (
           <button
             type="button"
             className="secondary-button"

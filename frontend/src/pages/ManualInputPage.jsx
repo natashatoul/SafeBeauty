@@ -103,6 +103,9 @@ function ManualInputPage() {
         source: isBarcodeDraft ? 'Manual input (edited barcode list)' : 'Manual input',
         productName: state?.productName,
         barcode: state?.barcode,
+        // Retain exactly what the user reviewed so the result can be reopened
+        // and corrected again without retyping the package label.
+        sourceIngredients: ingredients,
         selectedConditions: profile.conditions ?? [],
         ageGroup: profile.ageGroup,
         gender: profile.gender

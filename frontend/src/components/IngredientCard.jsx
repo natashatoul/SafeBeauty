@@ -78,7 +78,7 @@ function getProfileRuleExplanation(flag) {
 
 // IngredientCard - UI component it is a pattern of a card and ingredient - 
 // it/s object with data(name. rating. categoria)
-function IngredientCard({ ingredient }) { // it is a component and it is like custom HTML. ingredient - it is a props
+function IngredientCard({ ingredient }) { // it is a component and it is like custom HTML. ingredient - it is a prop
     const displayFunctions = getDisplayFunctions(ingredient.function)
     const displayCategories = getDisplayCategories(ingredient.category)
     const showRatingLabel = ingredient.safetyRating && ingredient.safetyRating !== 'Grey'

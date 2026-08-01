@@ -9,6 +9,25 @@ const getStorage = () => globalThis.localStorage
 const createId = () => globalThis.crypto?.randomUUID?.()
   ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
+// createID can generate unique numbers in two methods
+// cripto is a function randomUUID() which can produce unique numbers
+// this function inside browser
+// function createId() {
+//   if (
+//     globalThis.crypto &&
+//     typeof globalThis.crypto.randomUUID === 'function'
+//   ) {
+//     return globalThis.crypto.randomUUID()
+//   }
+
+//   const currentTime = Date.now()
+//   const randomNumber = Math.random()
+//   const hexadecimalNumber = randomNumber.toString(16)
+//   const randomPart = hexadecimalNumber.slice(2)
+
+//   return `${currentTime}-${randomPart}`
+// }
+
 const isHistoryEntry = (entry) => entry
   && typeof entry === 'object'
   && typeof entry.id === 'string'
