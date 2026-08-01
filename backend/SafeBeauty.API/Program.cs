@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using SafeBeauty.API.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,11 +35,40 @@ builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
 // {
 //     builder.Services.AddDbContext<SafeBeautyDbContext>(options => options.UseSqlServer(connectionString));
 // }
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Issuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+    };
+});
+
+
+builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+    .AddEntityFrameworkStores<SafeBeautyDbContext>()
+    .AddDefaultTokenProviders();
+
+
 builder.Services.AddScoped<DataSeeder>();
 builder.Services.AddScoped<IngredientDeduplicationService>();
 builder.Services.AddHttpClient<HuggingFaceService>();
 builder.Services.AddHttpClient<AiSummaryService>();
 builder.Services.AddScoped<IngredientAnalysisService>();
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<EmailService>();
+
 
 // CORS: allow the deployed frontend origin to call this API from the browser
 // CORS- Cross-Origin Resource Sharing - protection for browser
@@ -72,6 +105,7 @@ using (var scope = app.Services.CreateScope())
         await migrator.MigrateAsync(normalizationMigration);
     }
 
+
     var deduplicationService = scope.ServiceProvider
         .GetRequiredService<IngredientDeduplicationService>();
     await deduplicationService.RunAsync();
@@ -94,6 +128,9 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
