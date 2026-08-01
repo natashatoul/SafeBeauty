@@ -174,14 +174,7 @@ public class DataSeeder
         var source = "EU_Glossary_2025_1175";
         if (await _context.Ingredients.AnyAsync(i => i.Source == source)) return;
 
-        var catName = "EU Glossary Ingredient";
-        if (!categories.TryGetValue(catName, out var category))
-        {
-            category = new IngredientCategory { Name = catName };
-            _context.IngredientCategories.Add(category);
-            await _context.SaveChangesAsync();
-            categories[catName] = category;
-        }
+        var category = await EnsureCategoryAsync("EU Glossary Ingredient", categories);
 
         var filePath = Path.Combine(_dataPath, "EU_2025_1175_Glossary_Common_Ingredient_Names.csv");
         if (!File.Exists(filePath)) return;
@@ -302,14 +295,7 @@ public class DataSeeder
         // This rule is derived from official EU labelling logic: specific fragrance
         // allergens are analysed individually when listed, while generic fragrance
         // terms are treated as a cautionary fragrance mixture.
-        var catName = "Fragrance";
-        if (!categories.TryGetValue(catName, out var category))
-        {
-            category = new IngredientCategory { Name = catName };
-            _context.IngredientCategories.Add(category);
-            await _context.SaveChangesAsync();
-            categories[catName] = category;
-        }
+        var category = await EnsureCategoryAsync("Fragrance", categories);
 
         var genericNames = new[] { "PARFUM", "FRAGRANCE", "AROMA" };
 
@@ -431,6 +417,7 @@ public class DataSeeder
 
         var filePath = Path.Combine(_dataPath, "COSING_Annex_II_v2.txt");
         var lines = await ReadCsvRecordsAsync(filePath);
+        var pendingByName = new Dictionary<string, Ingredient>(StringComparer.Ordinal);
 
         foreach (var line in lines.Skip(5).Where(l => !string.IsNullOrWhiteSpace(l)))
         {
@@ -470,9 +457,7 @@ public class DataSeeder
                 if (string.IsNullOrWhiteSpace(name)) continue;
                 var normalizedName = IngredientNormalizer.Normalize(name);
 
-                var existing = await _context.Ingredients
-                    .Include(i => i.CategoryMappings)
-                    .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedName);
+                var existing = await FindTrackedIngredientAsync(normalizedName, pendingByName);
                 if (existing != null)
                 {
                     if (hasConditionalException)
@@ -515,6 +500,7 @@ public class DataSeeder
                     AddCategoryMapping(ingredient, category, mappingType,
                         "COSING_Annex_II", mappingNotes);
                     _context.Ingredients.Add(ingredient);
+                    pendingByName[normalizedName] = ingredient;
                 }
             }
         }
@@ -534,16 +520,11 @@ public class DataSeeder
                 m.Source == source &&
                 m.MappingType == mappingType)) return;
 
-        if (!categories.TryGetValue(categoryName, out var category))
-        {
-            category = new IngredientCategory { Name = categoryName };
-            _context.IngredientCategories.Add(category);
-            await _context.SaveChangesAsync();
-            categories[categoryName] = category;
-        }
+        var category = await EnsureCategoryAsync(categoryName, categories);
 
         var filePath = Path.Combine(_dataPath, fileName);
         var lines = await ReadCsvRecordsAsync(filePath);
+        var pendingByName = new Dictionary<string, Ingredient>(StringComparer.Ordinal);
 
         foreach (var line in lines.Skip(5).Where(l => !string.IsNullOrWhiteSpace(l)))
         {
@@ -565,9 +546,7 @@ public class DataSeeder
             foreach (var name in names)
             {
                 var normalizedName = IngredientNormalizer.Normalize(name);
-                var existing = await _context.Ingredients
-                    .Include(i => i.CategoryMappings)
-                    .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedName);
+                var existing = await FindTrackedIngredientAsync(normalizedName, pendingByName);
                 if (existing != null)
                 {
                     ApplyMoreRestrictiveRating(existing, rating, source);
@@ -593,10 +572,25 @@ public class DataSeeder
                     AddCategoryMapping(ingredient, category, mappingType, source,
                         $"Substance is listed in {source}.");
                     _context.Ingredients.Add(ingredient);
+                    pendingByName[normalizedName] = ingredient;
                 }
             }
         }
         await _context.SaveChangesAsync();
+    }
+
+    private async Task<Ingredient?> FindTrackedIngredientAsync(
+        string normalizedName,
+        Dictionary<string, Ingredient> pendingByName)
+    {
+        if (pendingByName.TryGetValue(normalizedName, out var pending))
+        {
+            return pending;
+        }
+
+        return await _context.Ingredients
+            .Include(i => i.CategoryMappings)
+            .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedName);
     }
 
     private async Task<IngredientCategory> EnsureCategoryAsync(
