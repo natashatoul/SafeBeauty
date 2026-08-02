@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
+
 import homeIcon from '../assets/Home.svg'
 import scanIcon from '../assets/Scan.svg'
 import historyIcon from '../assets/History.svg'
@@ -8,6 +9,7 @@ import desktopLogo from '../assets/Logo_desktop.svg'
 
 function Navbar() {
   const location = useLocation()
+
   // Navbar is a React component.
   // navItems is an array of objects. Each object describes one navigation link:
   // where it goes, what text it shows, and which icon it uses.

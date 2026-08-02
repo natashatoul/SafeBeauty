@@ -521,6 +521,8 @@ button {
   width: min(100%, 1040px);
 }
 
+
+
 .profile-page-header {
   margin-bottom: 38px;
 }
@@ -540,6 +542,26 @@ button {
   margin: 0;
   border: 0;
 }
+
+.profile-account-section {
+  padding: 22px 26px;
+  margin-bottom: 34px;
+  border-radius: 10px;
+  border-left: 5px solid var(--green);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.profile-account-section p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.profile-account-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 
 .profile-fieldset legend,
 .manual-input-label {
@@ -1407,6 +1429,102 @@ button {
   margin: 0;
 }
 
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+}
+
+.login-card {
+  width: min(100%, 420px);
+  padding: 34px 32px;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(31, 33, 28, 0.08);
+}
+
+.login-card > p {
+  margin: 0 0 24px;
+  color: var(--muted);
+}
+
+.login-card form {
+  display: grid;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.login-card label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--green-dark);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.login-card input {
+  width: 100%;
+  padding: 14px 16px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.login-card input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(94, 133, 97, 0.16);
+  outline: none;
+}
+
+.login-card .primary-button,
+.login-card .secondary-button {
+  width: 100%;
+}
+.login-card .secondary-button {
+  margin-bottom: 20px;
+}
+
+
+.login-error {
+  margin: -6px 0 0;
+  color: #b3261e;
+  font-size: 0.9rem;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  content: "";
+}
+
+.login-footer-link {
+  margin: 20px 0 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.login-footer-link a {
+  color: var(--green-dark);
+  font-weight: 600;
+}
+
+
 @media (max-width: 768px) {
   .manual-form-card {
     padding: 22px;
@@ -1551,9 +1669,18 @@ button {
     flex-direction: column;
   }
 
-  .profile-actions .primary-button {
-    width: 100%;
-  }
+    .profile-actions .primary-button {
+      width: 100%;
+    }
+  
+    .profile-account-actions {
+      flex-direction: column;
+    }
+  
+    .profile-account-actions button {
+      width: 100%;
+    }
+
 
   .summary-grid,
   .profile-grid,
