@@ -8,7 +8,8 @@ import {
 import axios from 'axios'
 import { getBarcodeValidationError } from '../utils/barcodeValidation'
 import { useProfile } from '../context/ProfileContext'
-import { saveAnalysis } from '../utils/analysisHistory'
+import { saveAnalysis } from '../services/scanHistoryService'
+
 
 // Base URL for the backend API, kept in one place so it only needs
 // to change in a single spot (e.g. when deploying to Azure later).
@@ -86,14 +87,15 @@ function ScanPage() {
 
   const analyseBarcode = useCallback(async (barcode) => {
     try {
-      const params = new URLSearchParams()
-      selectedConditions.forEach((condition) => params.append('userConditions', condition))
-      if (profile.ageGroup) params.set('ageGroup', profile.ageGroup)
-      if (profile.gender) params.set('gender', profile.gender)
-      const response = await axios.get(
+      const response = await axios.post(
         `${API_URL}/products/barcode/${encodeURIComponent(barcode)}`,
-        { params }
+        {
+          userConditions: selectedConditions,
+          ageGroup: profile.ageGroup,
+          gender: profile.gender
+        }
       )
+
       const results = response.data.analysis
       const sourceIngredients = response.data.sourceIngredients ?? []
       const analysisContext = {
@@ -136,7 +138,8 @@ function ScanPage() {
         return null
       }
 
-      const savedAnalysis = saveAnalysis({ results, analysisContext })
+      const savedAnalysis = await saveAnalysis({ results, analysisContext })
+
 
       navigate('/results', {
         state: {
@@ -155,6 +158,7 @@ function ScanPage() {
       return 'The product service is temporarily unavailable. Please try again.'
     }
   }, [navigate, profile.ageGroup, profile.gender, selectedConditions])
+
 
   const processBarcode = useCallback(async (barcode) => {
     const validationError = getBarcodeValidationError(barcode)
@@ -266,7 +270,7 @@ function ScanPage() {
         state === Html5QrcodeScannerState.SCANNING ||
         state === Html5QrcodeScannerState.PAUSED
       ) {
-        stopScanner(html5Qrcode).catch(() => {})
+        stopScanner(html5Qrcode).catch(() => { })
       } else {
         try {
           html5Qrcode.clear()
@@ -277,7 +281,7 @@ function ScanPage() {
         if (!startSettled) {
           startPromise
             .then(() => stopScanner(html5Qrcode))
-            .catch(() => {})
+            .catch(() => { })
         }
       }
     }

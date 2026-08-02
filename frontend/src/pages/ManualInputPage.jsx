@@ -6,7 +6,7 @@ import {
   hasLikelyMissingIngredientSeparators,
   parseIngredientList
 } from '../utils/ingredientParsing'
-import { saveAnalysis } from '../utils/analysisHistory'
+import { saveAnalysis } from '../services/scanHistoryService'
 
 const normaliseDraftEntry = (value = '') => value
   .trim()
@@ -113,7 +113,7 @@ function ManualInputPage() {
 
       // History is a convenience feature: a storage failure must not block the
       // result page, so saveAnalysis returns null instead of throwing.
-      const savedAnalysis = saveAnalysis({ results, analysisContext })
+      const savedAnalysis = await saveAnalysis({ results, analysisContext })
 
       // Move to the "/results" route, carrying the results data along.
       // { state: { results } } attaches this data to the navigation —
@@ -140,10 +140,10 @@ function ManualInputPage() {
     await handleAnalyse()
   }
 
-  const viewBarcodeResultAnyway = () => {
+  const viewBarcodeResultAnyway = async () => {
     if (!originalBarcodeResult?.results) return
 
-    const savedAnalysis = saveAnalysis({
+    const savedAnalysis = await saveAnalysis({
       results: originalBarcodeResult.results,
       analysisContext: originalBarcodeResult.analysisContext ?? {}
     })

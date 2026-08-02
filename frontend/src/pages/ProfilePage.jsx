@@ -1,8 +1,10 @@
+import { useAuth } from '../context/AuthContext'
+
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useProfile } from '../context/ProfileContext'
 import { analyseIngredients } from '../services/ingredientService'
-import { updateAnalysis } from '../utils/analysisHistory'
+import { updateAnalysis } from '../services/scanHistoryService'
 import privacyIcon from '../assets/Privacy.svg'
 
 const SKIN_TYPES = ['Normal', 'Dry', 'Oily', 'Combination', 'Sensitive']
@@ -25,6 +27,8 @@ const CONDITIONS = [
 
 function ProfilePage() {
   const { profile, saveProfile } = useProfile()
+  const { isAuthenticated, logout } = useAuth()
+
   const location = useLocation()
   const navigate = useNavigate()
   const returnToResults = location.state?.returnToResults
@@ -78,7 +82,7 @@ function ProfilePage() {
         }
 
         if (analysisContext.historyId) {
-          updateAnalysis(analysisContext.historyId, { results, analysisContext })
+          await updateAnalysis(analysisContext.historyId, { results, analysisContext })
         }
 
         navigate('/results', {
@@ -105,6 +109,18 @@ function ProfilePage() {
           <p>Save your skin and hair details, and choose conditions that personalise ingredient warnings.</p>
         </div>
       </header>
+
+      {isAuthenticated ? (
+  <>
+    <section className="profile-account-section">
+      <p>You're logged in — your profile can sync across devices.</p>
+      <button type="button" className="secondary-button" onClick={logout}>
+        Log out
+      </button>
+    </section>
+
+
+
 
       <form className="profile-form" onSubmit={handleSubmit}>
         <fieldset className="profile-fieldset">
@@ -226,7 +242,22 @@ function ProfilePage() {
           </button>
           {saved && <span className="profile-saved-message" role="status">✓ Profile saved</span>}
         </div>
-      </form>
+            </form>
+      </>
+    ) : (
+      <section className="profile-account-section">
+        <p>Log in to set up your skin, hair and condition preferences and sync them across devices.</p>
+        <div className="profile-account-actions">
+          <button type="button" className="primary-button" onClick={() => navigate('/login')}>
+            Log in
+          </button>
+          <button type="button" className="secondary-button" onClick={() => navigate('/register')}>
+            Create account
+          </button>
+        </div>
+      </section>
+    )}
+
     </div>
   )
 }

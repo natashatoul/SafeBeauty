@@ -18,15 +18,17 @@ public class ProductsController : ControllerBase
         _httpClient = httpClientFactory.CreateClient();
     }
 
-    //GET - api/Products/barcode/{barcode}
-    // Fetches product from Open Beauty Facts API and analises ingredients
-    [HttpGet("barcode/{barcode}")]
+        //POST - api/Products/barcode/{barcode}
+    // Fetches product from Open Beauty Facts API and analises ingredients.
+    // POST (not GET) so conditions/ageGroup/gender travel in the body,
+    // not in the URL — query strings end up in server access logs.
+    [HttpPost("barcode/{barcode}")]
     public async Task<ActionResult<ProductAnalyseResponse>> GetByBarcode(
         string barcode,
-        [FromQuery] List<string>? userConditions,
-        [FromQuery] string? ageGroup,
-        [FromQuery] string? gender)
+        [FromBody] BarcodeAnalyseRequest? request)
     {
+        var body = request ?? new BarcodeAnalyseRequest();
+
         if (!BarcodeValidator.TryValidate(barcode, out var validationError))
         {
             return BadRequest(validationError);
@@ -67,7 +69,7 @@ public class ProductsController : ControllerBase
 
             try
             {
-                return await BuildProductResponse(barcode, json, userConditions, ageGroup, gender);
+                return await BuildProductResponse(barcode, json, body.UserConditions, body.AgeGroup, body.Gender);
             }
             catch (JsonException)
             {
@@ -76,6 +78,7 @@ public class ProductsController : ControllerBase
             }
         }
     }
+
 
     private async Task<ActionResult<ProductAnalyseResponse>> BuildProductResponse(
         string barcode,

@@ -1,12 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AnalysisHistoryRow from '../components/AnalysisHistoryRow'
-import { getHistory, removeAnalysis } from '../utils/analysisHistory'
+import { useAuth } from '../context/AuthContext'
+import { getHistory, removeAnalysis } from '../services/scanHistoryService'
 
 function HomePage() {
   const navigate = useNavigate()
-  const [history, setHistory] = useState(getHistory)
+  const { isAuthenticated } = useAuth()
+  const [history, setHistory] = useState([])
   const recentAnalyses = history.slice(0, 5)
+
+    useEffect(() => {
+    if (!isAuthenticated) {
+      setHistory([])
+      return
+    }
+
+    getHistory().then(setHistory)
+  }, [isAuthenticated])
 
   const viewAnalysis = (item) => {
     navigate('/results', {
@@ -17,8 +28,8 @@ function HomePage() {
     })
   }
 
-  const deleteAnalysis = (id) => {
-    if (removeAnalysis(id)) setHistory(getHistory())
+  const deleteAnalysis = async (id) => {
+    if (await removeAnalysis(id)) setHistory(await getHistory())
   }
 
   return (
@@ -56,6 +67,8 @@ function HomePage() {
       </section>
 
       <section className="recent-section">
+        {isAuthenticated ? (
+          <>
         <div className="section-header">
           <h2>Recent analyses</h2>
           <button
@@ -83,6 +96,20 @@ function HomePage() {
               </div>
             )}
         </div>
+        </>
+        ) : (
+          <div className="profile-account-section">
+            <p>Log in to see your recent analyses and sync them across devices.</p>
+            <div className="profile-account-actions">
+              <button type="button" className="primary-button" onClick={() => navigate('/login')}>
+                Log in
+              </button>
+              <button type="button" className="secondary-button" onClick={() => navigate('/register')}>
+                Create account
+              </button>
+            </div>
+          </div>
+        )}
 
       </section>
     </div>
