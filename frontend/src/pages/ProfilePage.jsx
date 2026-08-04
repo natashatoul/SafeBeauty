@@ -1,5 +1,4 @@
 import { useAuth } from '../context/AuthContext'
-
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useProfile } from '../context/ProfileContext'
@@ -57,7 +56,7 @@ function ProfilePage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    saveProfile(form)
+    await saveProfile(form)
 
     // When Profile was opened from Results, recalculate the same formula with
     // the new conditions and update its existing history entry.

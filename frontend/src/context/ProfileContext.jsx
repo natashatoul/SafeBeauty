@@ -1,4 +1,6 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { useAuth } from './AuthContext'
+import { getProfile, saveProfile as saveProfileToServer } from '../services/userProfileService'
 
 // Creates a "channel" that components can subscribe to.
 // On its own it doesn't hold any data yet — it's just the wiring
@@ -14,44 +16,33 @@ const EMPTY_PROFILE = {
   gender: ''
 }
 
-function loadSavedProfile() {
-  try {
-    const saved = localStorage.getItem('safebeauty_profile')
-    if (!saved) return EMPTY_PROFILE
-
-    const parsed = JSON.parse(saved)
-    return {
-      ...EMPTY_PROFILE,
-      ...parsed,
-      conditions: Array.isArray(parsed.conditions) ? parsed.conditions : []
-    }
-  } catch {
-    return EMPTY_PROFILE
-  }
-}
-
 // This component is a "wrapper" that will sit near the top of the app.
 // `children` is a special prop meaning "whatever is nested inside this component"
 // e.g. <ProfileProvider><App /></ProfileProvider> makes <App /> the children here.
+// children it is a prop - it is what componet get from outside
 export function ProfileProvider({ children }) {
+  const { isAuthenticated } = useAuth()
+  // it is a State - it is what component it self hold and change
   // The actual profile data, stored as one object with several fields.
-  // Starts empty/default until either localStorage or the user fills it in.
-  const [profile, setProfile] = useState(loadSavedProfile)
+  // Starts empty until the useEffect below loads it from the server.
+  const [profile, setProfile] = useState(EMPTY_PROFILE)
 
-  // Function used whenever the profile needs to be updated
-  // (e.g. when the user fills in or edits their profile form).
-  // It does two things every time it's called:
-  const saveProfile = (newProfile) => {
-    // 1) Updates React's state, so the UI immediately reflects the new data.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setProfile(EMPTY_PROFILE)
+      return
+    }
+
+    getProfile().then((loaded) => {
+      if (loaded) setProfile(loaded)
+    })
+  }, [isAuthenticated])
+
+  const saveProfile = async (newProfile) => {
     setProfile(newProfile)
-
-    // 2) Persists the same data to localStorage, so it isn't lost
-    // if the user reloads the page or closes the browser.
-    // JSON.stringify() is the reverse of JSON.parse() — it turns
-    // a JS object into a string, since that's the only format
-    // localStorage accepts.
-    localStorage.setItem('safebeauty_profile', JSON.stringify(newProfile))
+    await saveProfileToServer(newProfile)
   }
+
 
   // The Provider is what actually broadcasts the data.
   // Anything placed in `value` becomes available to every component

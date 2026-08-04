@@ -18,12 +18,15 @@ public class SafeBeautyDbContext : IdentityDbContext<IdentityUser>
     public DbSet<AnnexRestriction> AnnexRestrictions { get; set; }
     public DbSet<ConditionRule> ConditionRules { get; set; }
     public DbSet<ScanHistory> ScanHistories { get; set; }
+    public DbSet<UserProfile> UserProfiles { get; set; }
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     
     {
-        base.OnModelCreating(modelBuilder); // настраивает свои таблицы (AspNetUsers, AspNetRoles и т.д.) именно в базовой реализации. 
-        // Если не вызвать base, эти таблицы не сконфигурируются как надо.
+        base.OnModelCreating(modelBuilder); // set up tables (AspNetUsers, 
+        // AspNetRoles и т.д.) excactly in this DB. 
+        // If do not call base this tables will set up not correct.
         modelBuilder.Entity<Ingredient>()
             .HasIndex(i => i.NormalizedInciName)
             .IsUnique();
