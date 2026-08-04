@@ -20,6 +20,7 @@ public static class IngredientNormalizer
     private static readonly Dictionary<string, string> ExactAliases = new(StringComparer.Ordinal)
     {
         ["COCO-CAPRYLATE CAPRATE"] = "COCO-CAPRYLATE/CAPRATE",
+        ["COCO-CAPRYLATE/CAPRATE(COCO CAPRYLATE/CAPRATE)"] = "COCO-CAPRYLATE/CAPRATE",
         ["AQUA / WATER / EAU"] = "AQUA",
         ["AQUA/WATER/EAU"] = "AQUA",
         ["WATER"] = "AQUA",
@@ -62,8 +63,10 @@ public static class IngredientNormalizer
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex BotanicalCommonName = new(
-        @"^(?<latin>[A-Z][A-Z.'-]+\s+[A-Z][A-Z.'-]+)\s+\((?!NANO\b)[A-Z][A-Z '\-]+\)\s+(?<part>BARK|BUD|BULB|BUTTER|EXTRACT|FLOWER|FRUIT|GERM|KERNEL|LEAF|OIL|PEEL|RESIN|RHIZOME|ROOT|SEED|STEM|WATER)\b(?<remainder>.*)$",
+        @"^(?<latin>[A-Z][A-Z.'-]+\s+[A-Z][A-Z.'-]+(?:\s+[A-Z][A-Z.'-]+)?)\s+\((?!NANO\b)[A-Z][A-Z '\-]+\)\s+(?<part>BARK|BUD|BULB|BUTTER|CALLUS|EXTRACT|FLOWER|FRUIT|GERM|GUM|HUSK|JUICE|KERNEL|LEAF|OIL|PEEL|POWDER|PULP|RESIN|RHIZOME|ROOT|SEED|SHOOT|SPROUT|STARCH|STEM|WATER|WAX)\b(?<remainder>.*)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+
 
     private static readonly Regex ColourIndexAlias = new(
         @"^.+?\s+\*?\(\s*(?<ci>CI\s+\d{5})\s*\)\*?$",
