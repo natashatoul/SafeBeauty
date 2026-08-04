@@ -34,9 +34,21 @@ const uniqueIngredients = (ingredients) => ingredients.filter((ingredient, index
   all.findIndex((other) => other.inciName === ingredient.inciName) === index)
 
 const formatConditionName = (condition) => condition.replace(/([a-z])([A-Z])/g, '$1 $2')
+// function formatConditionName(condition) {
+//   return condition.replace(/([a-z])([A-Z])/g, '$1 $2')
+// }
 
+const formatSkinHairSummary = (skinType, hairCondition) => {
+  const parts = []
+  if (skinType) parts.push(`Skin: ${skinType}`)
+  if (hairCondition) parts.push(`Hair: ${hairCondition}`)
+  return parts.length > 0 ? parts.join(', ') : 'Not specified'
+}
+
+// props - ingredient. flagType
 function ProfileIngredient({ ingredient, flagType }) {
   const flags = flagType ? getFlags(ingredient, flagType) : ingredient.conditionFlags ?? []
+
 
   return (
     <article className="profile-ingredient">
@@ -161,8 +173,9 @@ function ResultsPage() {
           <p>{results.aiSummary}</p>
           <small>
             * Generated from verified ingredient matches and profile flags. It supports understanding,
-            but is not a medical diagnosis or a substitute for professional advice.
+            but is not a medical diagnosis — for a detailed assessment, consult a dermatologist.
           </small>
+
         </section>
       )}
 
@@ -172,30 +185,31 @@ function ResultsPage() {
           <strong>{coverage}%</strong>
           <p>{totalKnown} verified · {totalUnknown} not matched · {totalIngredients} total</p>
         </article>
+
         <article className="summary-card">
           <h2 className="section-label">Personalisation</h2>
-          <strong>{selectedConditions.length}</strong>
+          <strong className="personalisation-value">
+            {selectedConditions.length > 0
+              ? selectedConditions.map(formatConditionName).join(', ')
+              : formatSkinHairSummary(context.skinType, context.hairCondition)
+}
+          </strong>
+
           <p>
             {selectedConditions.length > 0
-              ? `Profile conditions used: ${selectedConditions.map(formatConditionName).join(', ')}`
-              : 'No profile conditions were selected for this analysis.'}
+              ? 'These profile conditions were considered for this analysis.'
+              : 'No specific skin or hair conditions were selected for this analysis.'}
           </p>
           <button type="button" className="text-button" onClick={openProfile}>
-            {selectedConditions.length > 0 ? 'Edit profile' : 'Set up profile'}
+            Edit profile
           </button>
         </article>
+
       </section>
 
-      <section className="results-section">
-        <h2>What matters for your profile</h2>
-        {selectedConditions.length === 0 ? (
-          <div className="empty-guidance">
-            <p>Add conditions or preferences to highlight ingredients that may be especially relevant to you.</p>
-            <button type="button" className="secondary-button" onClick={openProfile}>
-              Set up profile
-            </button>
-          </div>
-        ) : (
+      {selectedConditions.length > 0 && (
+        <section className="results-section">
+          <h2>What matters for your profile</h2>
           <div className="profile-grid">
             <article className="profile-card concern">
               <h3 className="section-label">Ingredients that may not suit your skin</h3>
@@ -214,29 +228,30 @@ function ResultsPage() {
                 : <p>No specifically beneficial profile matches were identified.</p>}
             </article>
           </div>
-        )}
 
-        {regulatoryOnly.length > 0 && (
-          <div className="regulatory-note">
-            <h3>Regulatory notes</h3>
-            <p>
-              These ingredients have recorded regulatory use conditions or restrictions. This does
-              not automatically mean that the finished product is unsafe; applicability may depend
-              on product type and concentration.
-            </p>
-            <ul className="regulatory-ingredient-list">
-              {regulatoryOnly.map((ingredient) => (
-                <li
-                  className="ingredient-chip ingredient-chip--caution"
-                  key={`regulatory-${ingredient.inciName}`}
-                >
-                  {ingredient.inciName}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
+          {regulatoryOnly.length > 0 && (
+            <div className="regulatory-note">
+              <h3>Regulatory notes</h3>
+              <p>
+                These ingredients have recorded regulatory use conditions or restrictions. This does
+                not automatically mean that the finished product is unsafe; applicability may depend
+                on product type and concentration.
+              </p>
+              <ul className="regulatory-ingredient-list">
+                {regulatoryOnly.map((ingredient) => (
+                  <li
+                    className="ingredient-chip ingredient-chip--caution"
+                    key={`regulatory-${ingredient.inciName}`}
+                  >
+                    {ingredient.inciName}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
 
       {formulaGroups.length > 0 && (
         <section className="results-section">

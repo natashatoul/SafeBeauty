@@ -105,7 +105,9 @@ function ScanPage() {
         sourceIngredients,
         selectedConditions,
         ageGroup: profile.ageGroup,
-        gender: profile.gender
+        gender: profile.gender,
+        skinType: profile.skinType,
+        hairCondition: profile.hairCondition
       }
       const knownCount = results.results?.length ?? 0
       const unknownCount = results.unknownIngredients?.length ?? 0

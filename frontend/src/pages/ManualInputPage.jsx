@@ -108,7 +108,9 @@ function ManualInputPage() {
         sourceIngredients: ingredients,
         selectedConditions: profile.conditions ?? [],
         ageGroup: profile.ageGroup,
-        gender: profile.gender
+        gender: profile.gender,
+        skinType: profile.skinType,
+        hairCondition: profile.hairCondition,
       }
 
       // History is a convenience feature: a storage failure must not block the
