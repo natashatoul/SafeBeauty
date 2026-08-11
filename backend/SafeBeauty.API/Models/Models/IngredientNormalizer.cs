@@ -23,7 +23,6 @@ public static class IngredientNormalizer
         ["COCO-CAPRYLATE/CAPRATE(COCO CAPRYLATE/CAPRATE)"] = "COCO-CAPRYLATE/CAPRATE",
         ["AQUA / WATER / EAU"] = "AQUA",
         ["AQUA/WATER/EAU"] = "AQUA",
-        ["WATER"] = "AQUA",
         ["WATER(AQUA/EAU)"] = "AQUA",
         ["WATER (AQUA/EAU)"] = "AQUA",
         ["AVENE AQUA"] = "AQUA",

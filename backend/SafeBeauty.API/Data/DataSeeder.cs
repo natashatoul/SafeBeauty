@@ -35,6 +35,9 @@ public class DataSeeder
         await SeedAnnexAsync("COSING_Annex_VI_v2.txt", "UV Filter", SafetyRating.Green, "UV Filter", categories);
         await SeedFunctionCategoryMappingsAsync(categories);
         await SeedIngredientCategoryMappingsAsync(categories);
+        await SeedIngredientSynonymsAsync();
+
+
     }
 
     // 1. Create IngredientCategory records without using ingredient_categories.csv.
@@ -772,5 +775,60 @@ public class DataSeeder
         "ManualDerived" => 1,
         _ => 0
     };
+
+    private async Task SeedIngredientSynonymsAsync()
+{
+    // Guard: only needs to run once.
+    if (await _context.IngredientSynonyms.AnyAsync())
+    {
+        Console.WriteLine("Ingredient synonyms already seeded, skipping.");
+        return;
+    }
+
+    var filePath = Path.Combine(_dataPath, "COSING_Ingredients-Fragrance Inventory_v2.csv");
+    if (!File.Exists(filePath)) return;
+
+    var lines = await ReadCsvRecordsAsync(filePath);
+
+    // CSV headers: 0 = COSING Ref No, 1 = INCI name, 2 = INN name, 3 = Ph. Eur. Name
+    var added = 0;
+
+    foreach (var line in lines.Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)))
+    {
+        var parts = ParseCsvLine(line);
+        if (parts.Length < 4) continue;
+
+        var inciName = parts[1].Trim();
+        var normalizedInciName = IngredientNormalizer.Normalize(inciName);
+        if (normalizedInciName.Length == 0) continue;
+
+        var ingredient = await _context.Ingredients
+            .Include(i => i.Synonyms)
+            .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedInciName);
+        if (ingredient == null) continue;
+
+        var candidateSynonyms = new[] { parts[2].Trim(), parts[3].Trim() };
+
+        foreach (var candidate in candidateSynonyms)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) continue;
+
+            var normalizedSynonym = IngredientNormalizer.Normalize(candidate);
+            if (normalizedSynonym.Length == 0) continue;
+            if (normalizedSynonym == normalizedInciName) continue;
+
+            var alreadyExists = ingredient.Synonyms.Any(s =>
+                string.Equals(s.SynonymName, candidate, StringComparison.OrdinalIgnoreCase));
+            if (alreadyExists) continue;
+
+            ingredient.Synonyms.Add(new IngredientSynonym { SynonymName = candidate });
+            added++;
+        }
+    }
+
+    await _context.SaveChangesAsync();
+    Console.WriteLine($"Ingredient synonyms seeded: {added}");
+}
+
 
 }

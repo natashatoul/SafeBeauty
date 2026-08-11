@@ -81,6 +81,7 @@ public class IngredientAnalysisService
             .ThenInclude(m => m.Category)
             .ThenInclude(c => c.ConditionRules)
             .Where(i => lookupCandidates.Contains(i.NormalizedInciName))
+            .AsSplitQuery()
             .ToListAsync();
 
         var knownIngredientLookup = knownIngredients
@@ -90,6 +91,38 @@ public class IngredientAnalysisService
         var unknownIngredients = normalizedIngredients
             .Where(name => !knownIngredientLookup.ContainsKey(name))
             .ToList();
+
+
+        // Fallback: some products use INN/Ph. Eur. names instead of INCI (e.g.
+        // "Glycerol" instead of "Glycerin"). Only queried when something is
+        // still unmatched, since most requests have no unknown ingredients.
+        if (unknownIngredients.Count > 0)
+        {
+            var allSynonyms = await _context.IngredientSynonyms
+                       .Include(s => s.Ingredient)
+                       .ThenInclude(i => i.CategoryMappings)
+                       .ThenInclude(m => m.Category)
+                       .ThenInclude(c => c.ConditionRules)
+                       .AsSplitQuery()
+                       .ToListAsync();
+
+            var synonymLookup = allSynonyms
+                .GroupBy(s => IngredientNormalizer.Normalize(s.SynonymName), StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.First().Ingredient, StringComparer.Ordinal);
+
+            foreach (var name in unknownIngredients)
+            {
+                if (synonymLookup.TryGetValue(name, out var ingredient))
+                {
+                    knownIngredientLookup[name] = ingredient;
+                }
+            }
+
+            unknownIngredients = normalizedIngredients
+                .Where(name => !knownIngredientLookup.ContainsKey(name))
+                .ToList();
+        }
+
 
         var shouldClassifyUnknownIngredients =
             unknownIngredients.Count <= MaxUnknownIngredientsForAiClassification;
@@ -155,6 +188,6 @@ public class IngredientAnalysisService
             ageGroup,
             gender);
         return response;
-        
+
     }
 }
