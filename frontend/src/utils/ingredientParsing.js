@@ -1,25 +1,71 @@
-// Cosmetic labels commonly separate ingredients with commas, bullets,
-// middle dots, semicolons, line breaks or a full stop followed by the next
-// ingredient.
-// A slash is deliberately not a separator:
-// it can be part of a valid INCI name such as ACRYLATES/C10-30 ALKYL
-// ACRYLATE CROSSPOLYMER, or join translated synonyms on a label.
-export const parseIngredientList = (text = '') => text
-  // Preserve common botanical suffixes when a copied label wraps a line inside
-  // a single ingredient, for example "Simmondsia Chinensis Seed\nOil".
-  .replace(/\b(SEED|FRUIT|KERNEL|LEAF|ROOT|FLOWER|STEM)\s*[\r\n]+\s*(OIL|EXTRACT|WATER|WAX|BUTTER)\b/gi, '$1 $2')
-  // Protect the dots in the packaging reference F.I.L. before treating dots
-  // as list separators. The marker is restored immediately after splitting.
-  .replace(/F\.I\.L\./gi, 'F\u2024I\u2024L\u2024')
-  // Protect numeric commas inside valid chemical names such as 1,2-Hexanediol.
-  .replace(/(\d),(\d)/g, '$1\u2063$2')
-  .split(/[,•･・·;\r\n]+|\.\s+(?=[A-Za-z])/)
-  .map((ingredient) => ingredient.replaceAll('\u2024', '.'))
-  .map((ingredient) => ingredient.replaceAll('\u2063', ','))
-  .map((ingredient) => ingredient.trim())
-  .filter(Boolean)
+// functions are use in tests and in ManualInputPage.jsx
 
-export const hasLikelyMissingIngredientSeparators = (text = '', parsed = []) =>
-  parsed.length <= 2
-  && text.length >= 120
-  && text.trim().split(/\s+/).length >= 12
+// Patterns used to clean and split cosmetic ingredient lists.
+
+const PLANT_INGREDIENT_PATTERN =
+  /\b(SEED|FRUIT|KERNEL|LEAF|ROOT|FLOWER|STEM)\s*[\r\n]+\s*(OIL|EXTRACT|WATER|WAX|BUTTER)\b/gi;
+
+const FIL_PATTERN =
+  /F\.\s*I\.\s*L\./gi;
+
+const DECIMAL_COMMA_PATTERN =
+  /(\d),(\d)/g;
+
+const INGREDIENT_SEPARATOR_PATTERN =
+  /[,•･・·;\r\n]+|\.\s+(?=[A-Za-z])/;
+
+
+export const parseIngredientList = (text = '') => {
+  const normalisedText = text
+
+    // Join ingredient names broken across lines.
+    .replace(
+      PLANT_INGREDIENT_PATTERN,
+      '$1 $2'
+    )
+
+    // \u2024 — "ONE DOT LEADER" small dot like normal. , but differ
+    // \u2063 — "INVISIBLE SEPARATOR"
+    .replace(
+      FIL_PATTERN,
+      'F\u2024I\u2024L\u2024'
+    )
+
+    // Protect decimal commas such as "1,5%".
+    .replace(
+      DECIMAL_COMMA_PATTERN,
+      '$1\u2063$2'
+    );
+
+  return normalisedText
+    // Split the ingredient list at common separators.
+    .split(INGREDIENT_SEPARATOR_PATTERN)
+
+    // Restore protected characters.
+    .map((ingredient) =>
+      ingredient.replaceAll('\u2024', '.')
+    )
+    .map((ingredient) =>
+      ingredient.replaceAll('\u2063', ',')
+    )
+
+    // Clean each ingredient.
+    .map((ingredient) => ingredient.trim())
+    .filter(Boolean);
+};
+
+
+export const hasLikelyMissingIngredientSeparators = (
+  text = '',
+  parsed = []
+) => {
+  const wordCount = text.trim().split(/\s+/).length;
+
+  // A long text producing only one or two ingredients
+  // may indicate that ingredient separators were lost.
+  return (
+    parsed.length <= 2 &&
+    text.length >= 120 &&
+    wordCount >= 12
+  );
+};

@@ -10,4 +10,7 @@ export default defineConfig({
       '/api': 'http://localhost:5166',
     },
   },
+  test: {
+    include: ['**/*.spec.js'],
+  },
 })
