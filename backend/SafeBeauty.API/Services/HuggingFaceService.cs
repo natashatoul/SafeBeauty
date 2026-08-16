@@ -1,4 +1,4 @@
-// These "using" lines import the tools this file needs from .NET libraries.
+// using lines import the tools this file needs from .NET libraries.
 using System.Net.Http.Headers;   // AuthenticationHeaderValue (for the Bearer token header)
 using System.Text;               // Encoding.UTF8 (to encode the request body)
 using System.Text.Json;          // JsonSerializer and JsonDocument (to write and read JSON)
@@ -6,11 +6,10 @@ using SafeBeauty.API.DTOs;       // AiIngredientResultDto (the "envelope" we ret
 
 namespace SafeBeauty.API.Services;
 
-/// <summary>
 /// Sends an unknown ingredient name to the Hugging Face Inference API
-/// (zero-shot classification model) and returns the best-matching safety label
+/// (zero-shot classification model - model didn't learned on safe cosmetic ingredients)
+///  and returns the best-matching safety label
 /// together with the model's confidence score.
-/// </summary>
 public class HuggingFaceService
 {
     // Private fields. "readonly" means they can only be assigned once,
@@ -20,7 +19,7 @@ public class HuggingFaceService
     private readonly string _apiKey;
     private readonly ILogger<HuggingFaceService> _logger;
 
-    // The four candidate labels the model chooses between.
+    // It is a array with four labels that model can chooses.
     // "static" = one shared array for the whole class, not a copy per object,
     // because the labels are the same for every request.
     private static readonly string[] Labels =
@@ -43,14 +42,14 @@ public class HuggingFaceService
         _httpClient = httpClient;
         _logger = logger;
 
-        // Reads the token from configuration:
-        //   locally  -> the "HuggingFace": { "ApiKey": ... } section in appsettings.json
-        //   on Azure -> the HuggingFace__ApiKey application setting (env variable)
-        // The "!" (null-forgiving operator) is a promise to the compiler
-        // that this value definitely exists and is not null.
+    // Reads the token from configuration:
+    // locally  -> the "HuggingFace": { "ApiKey": ... } section in appsettings.json
+    // on Azure -> the HuggingFace__ApiKey application setting (env variable)
+    // The "!" (null-forgiving operator) is a promise to the compiler
+    // that this value definitely exists and is not null.
         _apiKey = configuration["HuggingFace:ApiKey"] ?? string.Empty;
     }
-
+    // This is a main work
     // "async" allows the use of "await" inside.
     // Task<AiIngredientResultDto> = a promise of a result that will arrive later,
     // so the server thread is not blocked while we wait for the network.
@@ -84,21 +83,21 @@ public class HuggingFaceService
                 "https://router.huggingface.co/hf-inference/models/facebook/bart-large-mnli");
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            // Attach the API token as an "Authorization: Bearer hf_..." header.
-            // "Bearer" literally means "the holder of this token is allowed in".
+// Attach the API token as an "Authorization: Bearer hf_..." header.
+// "Bearer" literally means "the holder of this token is allowed in".
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
 
-            // Send the POST request to the model's endpoint and wait (non-blocking)
-            // for the response.
+    // Send the POST request to the model's endpoint and wait (non-blocking)
+    // for the response.
             var response = await _httpClient.SendAsync(request);
 
-            // Read the response body as text (second await in this method).
+    // Read the response body as text (second await in this method).
             var responseJson = await response.Content.ReadAsStringAsync();
 
-            // Graceful degradation: if Hugging Face returned an error
-            // (model still loading, rate limit hit, invalid token, etc.),
-            // do NOT crash — return an honest "Unknown" result instead,
-            // so the frontend can show "could not determine" rather than break.
+    // Graceful degradation: if Hugging Face returned an error
+    // (model still loading, rate limit hit, invalid token, etc.),
+    // do NOT crash — return an honest "Unknown" result instead,
+    // so the frontend can show "could not determine" rather than break.
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning(
