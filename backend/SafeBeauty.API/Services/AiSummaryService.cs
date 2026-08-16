@@ -9,13 +9,9 @@ namespace SafeBeauty.API.Services;
 public class AiSummaryService
 {
     // HttpClient is the .NET object that sends HTTP requests.
-    // We do not create it with "new HttpClient()" here; ASP.NET Core injects it
-    // through dependency injection when Program.cs uses AddHttpClient<AiSummaryService>().
     private readonly HttpClient _httpClient;
 
     // Hugging Face LLM token from configuration.
-    // Locally it comes from "HuggingFace": { "LlmApiKey": "..." } in appsettings.Development.json
-    // or from an environment variable named HuggingFace__LlmApiKey.
     private readonly string _apiKey;
 
     // Logger lets us record what went wrong without crashing the application.
@@ -24,12 +20,12 @@ public class AiSummaryService
 
     // Hugging Face's OpenAI-compatible chat endpoint.
     // This endpoint expects "messages" with roles like system/user/assistant.
-    private const string ChatUrl = "https://router.huggingface.co/v1/chat/completions";
+    private readonly string _chatUrl = "https://router.huggingface.co/v1/chat/completions";
 
     // The model that writes the product summary.
     // If this model is unavailable for your token/provider later, this is the
     // one string we can swap without changing the rest of the service.
-    private const string ModelId = "meta-llama/Llama-3.1-8B-Instruct";
+    private readonly string _modelId = "meta-llama/Llama-3.1-8B-Instruct";
 
     // Only values offered by ProfilePage may enter the model prompt. Besides
     // keeping the wording consistent, this prevents arbitrary user text from
@@ -42,7 +38,39 @@ public class AiSummaryService
     {
         "Female", "Male", "Prefer not to say"
     };
+    private static readonly string[] ProhibitedPhrases =
+    {
+        "suitable for",
+        "suitable option",
+        "recommended for",
+        "designed to",
+        "beneficial for",
+        "broad-spectrum protection",
+        "broad spectrum protection",
+        "protection against uva and uvb",
+        "protects against uva and uvb",
+        "provides uva protection",
+        "provides uvb protection",
+        "eczema care",
+        "for eczema",
+        "for atopic dermatitis",
+        "treats ",
+        "treat ",
+        "heals ",
+        "cures ",
+        "manages ",
+        "improves symptoms"
+    };
+    private static readonly string[] BeneficialPhrases =
+    {
+        "flagged as beneficial",
+        "beneficial profile signal",
+        "profile-supporting signal",
+        "relevant to the selected profile"
+    };
 
+
+// this is constructor
     public AiSummaryService(
         HttpClient httpClient,
         IConfiguration configuration,
@@ -51,16 +79,21 @@ public class AiSummaryService
         _httpClient = httpClient;
         _apiKey = configuration["HuggingFace:LlmApiKey"] ?? string.Empty;
         _logger = logger;
+        _chatUrl = configuration["HuggingFace:ChatUrl"] ?? "https://router.huggingface.co/v1/chat/completions";
+        _modelId = configuration["HuggingFace:ModelId"] ?? "meta-llama/Llama-3.1-8B-Instruct";
+
     }
 
+// this method prepare request form(how to make JSON from text for sertain roles) 
+// + model/max_tokens/temperature and send this form via HTTP
     public async Task<string> SummariseAsync(
         AnalyseResponse results,
-        List<string> userConditions,
+        IReadOnlyCollection<string> userConditions,
         string? ageGroup = null,
         string? gender = null)
     {
         // Always build a deterministic fallback first.
-        // This is our safety net: if Hugging Face is slow, unavailable, unauthorised,
+        // This is a safety net: if Hugging Face is slow, unavailable, unauthorised,
         // or returns a format we do not understand, the app still shows a useful summary.
         var fallback = BuildFallbackSummary(results);
 
@@ -75,8 +108,8 @@ public class AiSummaryService
         try
         {
             // BuildMessages returns two strings:
-            //   systemMessage = rules for the model ("do not invent facts")
-            //   userMessage   = the actual analysis data for this product
+            //   systemMessage, like rules for the model ("do not invent facts")
+            //   userMessage, the actual analysis data for this product
             var (systemMessage, userMessage) = BuildMessages(
                 results,
                 userConditions,
@@ -87,7 +120,7 @@ public class AiSummaryService
             // expected by the Hugging Face chat endpoint.
             var requestBody = new
             {
-                model = ModelId,
+                model = _modelId,
                 messages = new[]
                 {
                     // "system" is the instruction layer: it tells the model how to behave.
@@ -109,7 +142,7 @@ public class AiSummaryService
 
             // Create one HTTP POST request to the HF chat endpoint.
             // "using var" disposes the request object when this method finishes.
-            using var request = new HttpRequestMessage(HttpMethod.Post, ChatUrl);
+            using var request = new HttpRequestMessage(HttpMethod.Post, _chatUrl);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
             // Authorization header: "Bearer" + token.
@@ -121,13 +154,13 @@ public class AiSummaryService
             var responseJson = await response.Content.ReadAsStringAsync();
 
             // Non-success status codes include 401, 404, 429, 500, 503, etc.
-            // We log the problem for debugging and return fallback to the frontend.
+            // Log the problem for debugging and return fallback to the frontend.
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning(
-                    "HF chat LLM returned {StatusCode}: {Body}",
-                    (int)response.StatusCode,
-                    responseJson);
+                    "HF chat LLM returned status code {StatusCode}.",
+                    (int)response.StatusCode);
+
                 return fallback;
             }
 
@@ -166,7 +199,8 @@ public class AiSummaryService
 
             // If the request succeeded but the response did not contain usable text,
             // keep the app stable and return the deterministic summary.
-            _logger.LogWarning("HF chat LLM response had no usable content: {Body}", responseJson);
+            _logger.LogWarning("HF chat LLM response had no usable content.");
+
             return fallback;
         }
         catch (Exception ex)
@@ -178,9 +212,13 @@ public class AiSummaryService
         }
     }
 
+
+// this method takes facts(results, userConditions, ageGroup, gender) and create two 
+// bis strings - systemMessage(rules) and userMessage(ingredients. flags. profile)
+// and retuurns together
     private static (string systemMessage, string userMessage) BuildMessages(
         AnalyseResponse results,
-        List<string> userConditions,
+        IReadOnlyCollection<string> userConditions,
         string? ageGroup,
         string? gender)
     {
@@ -208,6 +246,7 @@ public class AiSummaryService
             : "No specific skin profile was provided.";
         var presentationContextLine = BuildPresentationContextLine(ageGroup, gender);
 
+// it is a prompt, instuction that send to the model before generation the response
         var systemMessage =
     "You are a cosmetic ingredient assistant. Using ONLY the verified analysis facts supplied by the user, " +
     "write one cohesive consumer-friendly paragraph of about 140-190 words that explains the overall formula, " +
@@ -215,11 +254,11 @@ public class AiSummaryService
     "Start with a complete standalone sentence. Do not begin with transition phrases such as 'It also', 'Additionally', 'Moreover', or 'Furthermore'. " +
 
     "This is cosmetic ingredient information, not medical advice. " +
-    "Do not claim that the product treats, heals, soothes, calms, alleviates, prevents, cures, improves, or manages any medical condition or symptoms. " +
+    "Do not claim that the product treats, heals, soothes, calms, alleviates, prevents, cures, improves, manages, or is recommended for any medical condition or symptoms. " +
     "Do not say that the product is suitable for atopic dermatitis, eczema, psoriasis, rosacea, acne, alopecia, seborrhoeic dermatitis, or any other condition. " +
-    "Do not recommend the product for a medical or skin condition. " +
 
-    "Age group and gender are optional presentation context only. They never change ingredient facts, regulatory ratings, condition flags, safety, suitability, or efficacy. " +
+    "Age group and gender are optional presentation context that may influence which verified cosmetic information is emphasised in the explanation. They must never introduce new ingredient facts, regulatory ratings, condition flags, medical claims, or unsupported suitability or efficacy conclusions. " +
+
     "Never combine age or gender with words such as suitable, recommended, effective, beneficial, designed for, or intended for. " +
     "Gender may affect neutral wording only; prefer second-person wording such as 'your skin'. Do not describe 'male skin' or 'female skin', and do not claim that a gender inherently has particular needs or properties. " +
     "If age is mentioned, copy the supplied age-group label exactly. Do not translate a range such as '46-60' into 'women in their 40s and 50s'. " +
@@ -241,10 +280,10 @@ public class AiSummaryService
     "Never describe an individual ingredient as having 'mixed relevance' unless that ingredient is explicitly listed under 'Potential concerns (Avoid flags)'. " +
     "The phrase 'mixed relevance for the selected profile' may describe the product as a whole only when at least one Avoid flag is present, and the reason must be an ingredient from that Avoid list. " +
     "If 'Potential concerns (Avoid flags)' is 'none', say that no ingredients were specifically flagged as Avoid for the selected profile, and do not use the phrase 'mixed relevance'. " +
+    
     "A SafetyRating or a regulatory category such as Amber, Restricted Substance, Preservative, or Keratolytic is not by itself evidence of irritation or incompatibility with sensitive skin. " +
-    "Restricted Substance is a regulatory classification only. " +
-    "If you mention a restricted ingredient, say only that regulatory conditions or concentration limits may apply; do not turn that classification into a medical or personalised warning. " +
-    "A restricted ingredient may be mentioned under Data limitations or regulatory notes, but never as the reason for a personalised profile concern unless the same ingredient is explicitly listed under Potential concerns (Avoid flags). " +
+    "Restricted Substance is a regulatory classification only: mention only that regulatory conditions or concentration limits may apply, and never treat it as a personalised profile concern unless the same ingredient is explicitly listed under Potential concerns (Avoid flags). " +
+
     "Do not translate 'skin conditioning' or another listed function into hydration unless HUMECTANT or another explicit hydration-related function is present. " +
     "CosIng functions are possible listed functions for an ingredient in cosmetics, not proof of the ingredient's exact purpose in this specific product. " +
     "If a function list contains context-specific uses such as hair conditioning or oral care, do not mention those unless the Product signals line supports that product context. " +
@@ -256,8 +295,7 @@ public class AiSummaryService
     "If the unmatched count is above zero, mention only the count and that those names could not be verified. " +
     "Do not invent, reconstruct, quote, or classify any unmatched ingredient name. " +
 
-    "Never claim the product is safe, effective, or suitable for a condition. " +
-    "Do not invent any ingredient, effect, or fact that is not in the data.";
+    "Never claim the product is safe, effective, or suitable for a condition, and do not invent any ingredient, effect, or fact that is not in the data.";
 
         var total = results.Results.Count + results.UnknownIngredients.Count;
         var unknownShare = total == 0
@@ -377,31 +415,7 @@ public class AiSummaryService
 
     private static bool ViolatesSafetyBoundary(string summary)
     {
-        var prohibitedPhrases = new[]
-        {
-            "suitable for",
-            "suitable option",
-            "recommended for",
-            "designed to",
-            "beneficial for",
-            "broad-spectrum protection",
-            "broad spectrum protection",
-            "protection against uva and uvb",
-            "protects against uva and uvb",
-            "provides uva protection",
-            "provides uvb protection",
-            "eczema care",
-            "for eczema",
-            "for atopic dermatitis",
-            "treats ",
-            "treat ",
-            "heals ",
-            "cures ",
-            "manages ",
-            "improves symptoms"
-        };
-
-        return prohibitedPhrases.Any(phrase =>
+        return ProhibitedPhrases.Any(phrase =>
             summary.Contains(phrase, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -463,17 +477,9 @@ public class AiSummaryService
             .Select(result => result.InciName)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var beneficialPhrases = new[]
-        {
-            "flagged as beneficial",
-            "beneficial profile signal",
-            "profile-supporting signal",
-            "relevant to the selected profile"
-        };
-
         var claimSentences = Regex
             .Split(summary, @"(?<=[.!?])\s+")
-            .Where(sentence => beneficialPhrases.Any(phrase =>
+            .Where(sentence => BeneficialPhrases.Any(phrase =>
                 sentence.Contains(phrase, StringComparison.OrdinalIgnoreCase)));
 
         foreach (var sentence in claimSentences)
