@@ -193,7 +193,7 @@ public class AiSummaryService
                         return fallback;
                     }
 
-                    return summary;
+                    return EnsureRegulatoryWarningOpening(summary, results);
                 }
             }
 
@@ -240,6 +240,7 @@ public class AiSummaryService
             .ToList();
 
         var productSignals = BuildProductSignals(results);
+        var redIngredients = GetRedIngredients(results);
 
         var conditionsLine = userConditions.Any()
             ? $"A profile with {userConditions.Count} selected condition(s) was provided. Refer to it only as 'the selected profile'; do not repeat condition names."
@@ -269,6 +270,7 @@ public class AiSummaryService
     "Do not say that the formula or product is 'designed to' produce an effect; an ingredient list does not establish product intent, concentration, or performance. " +
 
     "If any Avoid flags are present, clearly mention that the product has mixed relevance for the selected profile. " +
+    "If any ingredients are listed under 'Red regulatory ingredients', the first sentence must warn that these verified ingredients have a Red regulatory rating or prohibited-use concern before describing cosmetic roles. " +
     "If Beneficial flags are present, you may mention them as cosmetic profile-supporting signals, but do not claim the product treats, improves, manages, or is suitable for a medical condition. " +
     "When mentioning Beneficial flags, use cautious wording such as 'contains ingredients flagged as beneficial in the cosmetic rule set' or 'may be relevant to the selected profile's cosmetic needs'. " +
     "Only ingredients explicitly listed under 'Beneficial profile signals' may be described as beneficial, profile-supporting, or relevant to the selected profile. " +
@@ -305,6 +307,7 @@ public class AiSummaryService
         var userMessage =
             $"Product signals: {(productSignals.Any() ? string.Join("; ", productSignals) : "none")}.\n" +
             $"Verified ingredients and plain roles: {(known.Any() ? string.Join("; ", known) : "none")}.\n" +
+            $"Red regulatory ingredients: {(redIngredients.Any() ? string.Join(", ", redIngredients) : "none")}.\n" +
             $"Data coverage: {results.Results.Count} of {total} ingredients matched; {results.UnknownIngredients.Count} unmatched ({unknownShare}%). Raw unmatched names are not provided.\n" +
             $"Potential concerns (Avoid flags): {(concerns.Any() ? string.Join(", ", concerns) : "none")}.\n" +
             $"Beneficial profile signals: {(benefits.Any() ? string.Join("; ", benefits) : "none")}.\n" +
@@ -373,6 +376,54 @@ public class AiSummaryService
         }
 
         return signals;
+    }
+
+    private static List<string> GetRedIngredients(AnalyseResponse results)
+    {
+        return results.Results
+            .Where(result => string.Equals(result.SafetyRating, "Red", StringComparison.OrdinalIgnoreCase))
+            .Select(result => result.InciName)
+            .ToList();
+    }
+
+    private static string BuildRedIngredientWarning(AnalyseResponse results)
+    {
+        var redIngredients = GetRedIngredients(results);
+        if (redIngredients.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var names = string.Join(", ", redIngredients.Take(5));
+        var extraCount = redIngredients.Count - 5;
+        var ingredientWord = redIngredients.Count == 1 ? "ingredient" : "ingredients";
+        var determiner = redIngredients.Count == 1 ? "this" : "these";
+        var verb = redIngredients.Count == 1 ? "has" : "have";
+        var suffix = extraCount > 0 ? $" and {extraCount} more" : string.Empty;
+
+        return $"Regulatory warning: {names}{suffix} {verb} a Red regulatory rating, so {determiner} verified {ingredientWord} should be reviewed before considering the formula's cosmetic roles.";
+    }
+
+    private static string EnsureRegulatoryWarningOpening(string summary, AnalyseResponse results)
+    {
+        var warning = BuildRedIngredientWarning(results);
+        if (string.IsNullOrWhiteSpace(warning))
+        {
+            return summary;
+        }
+
+        var firstSentence = Regex.Split(summary.Trim(), @"(?<=[.!?])\s+").FirstOrDefault() ?? summary;
+        var firstSentenceHasWarning =
+            firstSentence.Contains("red regulatory", StringComparison.OrdinalIgnoreCase)
+            || firstSentence.Contains("prohibited", StringComparison.OrdinalIgnoreCase)
+            || firstSentence.Contains("regulatory warning", StringComparison.OrdinalIgnoreCase);
+
+        var mentionsRedIngredient = GetRedIngredients(results)
+            .Any(name => firstSentence.Contains(name, StringComparison.OrdinalIgnoreCase));
+
+        return firstSentenceHasWarning && mentionsRedIngredient
+            ? summary
+            : $"{warning} {summary}";
     }
 
     private static bool HasCategory(IngredientResultDto result, string category)
@@ -528,6 +579,11 @@ public class AiSummaryService
             .ToList();
 
         var paragraphs = new List<string>();
+        var redWarning = BuildRedIngredientWarning(results);
+        if (!string.IsNullOrWhiteSpace(redWarning))
+        {
+            paragraphs.Add(redWarning);
+        }
 
         if (uvFilters.Count > 0)
         {
