@@ -36,6 +36,7 @@ public class DataSeeder
         await SeedFunctionCategoryMappingsAsync(categories);
         await SeedIngredientCategoryMappingsAsync(categories);
         await SeedIngredientSynonymsAsync();
+        await SeedRegulatoryHeadNameSynonymsAsync();
 
 
     }
@@ -286,7 +287,7 @@ public class DataSeeder
         Console.WriteLine($"CosIng ingredient functions updated: {updates}");
     }
 
-   
+
     private async Task SeedGenericFragranceTermsAsync(Dictionary<string, IngredientCategory> categories)
     {
         // PARFUM / FRAGRANCE / AROMA are generic INCI declarations for fragrance
@@ -407,6 +408,37 @@ public class DataSeeder
             .ToList();
     }
 
+    // its a markers
+    private static readonly string[] HeadNameCutMarkers =
+    {
+      " and its", ", its", " and their", ", their", " (INN)", ";"
+    };
+
+    // Regulatory names in CosIng Annex II/III are often phrased as
+    // "Substance and its salts/compounds/derivatives" rather than the
+    // plain substance name a real user would type on a label. This takes
+    // the text before the earliest such marker as a shorter "common name"
+    // candidate, e.g. "Arsenic and its compounds" -> "Arsenic".
+    private static string? TryExtractHeadName(string fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName)) return null;
+
+        var earliestIndex = -1;
+        foreach (var marker in HeadNameCutMarkers)
+        {
+            var index = fullName.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (index > 0 && (earliestIndex == -1 || index < earliestIndex))
+            {
+                earliestIndex = index;
+            }
+        }
+
+        if (earliestIndex <= 0) return null;
+
+        var head = fullName[..earliestIndex].Trim().TrimEnd(',', ';');
+        return head.Length >= 3 ? head : null;
+    }
+
     private async Task SeedAnnexIIAsync(Dictionary<string, IngredientCategory> categories)
     {
         const string mappingType = "RegulatoryAnnexNormalizedV3";
@@ -455,7 +487,7 @@ public class DataSeeder
                 names.Add(chemicalName);
             }
 
-            foreach (var name in names)
+            foreach (var name in names.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrWhiteSpace(name)) continue;
                 var normalizedName = IngredientNormalizer.Normalize(name);
@@ -762,6 +794,7 @@ public class DataSeeder
         });
     }
 
+    // it is a scale of trastworth jf ingredient source
     private static int GetMappingPriority(string mappingType) => mappingType switch
     {
         "RegulatoryAnnexNormalizedV3" => 7,
@@ -777,58 +810,128 @@ public class DataSeeder
     };
 
     private async Task SeedIngredientSynonymsAsync()
-{
-    // Guard: only needs to run once.
-    if (await _context.IngredientSynonyms.AnyAsync())
     {
-        Console.WriteLine("Ingredient synonyms already seeded, skipping.");
-        return;
+        // Guard: only needs to run once.
+        if (await _context.IngredientSynonyms.AnyAsync())
+        {
+            Console.WriteLine("Ingredient synonyms already seeded, skipping.");
+            return;
+        }
+
+        var filePath = Path.Combine(_dataPath, "COSING_Ingredients-Fragrance Inventory_v2.csv");
+        if (!File.Exists(filePath)) return;
+
+        var lines = await ReadCsvRecordsAsync(filePath);
+
+        // CSV headers: 0 = COSING Ref No, 1 = INCI name, 2 = INN name, 3 = Ph. Eur. Name
+        var added = 0;
+
+        foreach (var line in lines.Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)))
+        {
+            var parts = ParseCsvLine(line);
+            if (parts.Length < 4) continue;
+
+            var inciName = parts[1].Trim();
+            var normalizedInciName = IngredientNormalizer.Normalize(inciName);
+            if (normalizedInciName.Length == 0) continue;
+
+            var ingredient = await _context.Ingredients
+                .Include(i => i.Synonyms)
+                .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedInciName);
+            if (ingredient == null) continue;
+
+            var candidateSynonyms = new[] { parts[2].Trim(), parts[3].Trim() };
+
+            foreach (var candidate in candidateSynonyms)
+            {
+                if (string.IsNullOrWhiteSpace(candidate)) continue;
+
+                var normalizedSynonym = IngredientNormalizer.Normalize(candidate);
+                if (normalizedSynonym.Length == 0) continue;
+                if (normalizedSynonym == normalizedInciName) continue;
+
+                var alreadyExists = ingredient.Synonyms.Any(s =>
+                    string.Equals(s.SynonymName, candidate, StringComparison.OrdinalIgnoreCase));
+                if (alreadyExists) continue;
+
+                ingredient.Synonyms.Add(new IngredientSynonym { SynonymName = candidate });
+                added++;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        Console.WriteLine($"Ingredient synonyms seeded: {added}");
     }
 
-    var filePath = Path.Combine(_dataPath, "COSING_Ingredients-Fragrance Inventory_v2.csv");
-    if (!File.Exists(filePath)) return;
-
-    var lines = await ReadCsvRecordsAsync(filePath);
-
-    // CSV headers: 0 = COSING Ref No, 1 = INCI name, 2 = INN name, 3 = Ph. Eur. Name
-    var added = 0;
-
-    foreach (var line in lines.Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)))
+    private async Task SeedRegulatoryHeadNameSynonymsAsync()
     {
-        var parts = ParseCsvLine(line);
-        if (parts.Length < 4) continue;
-
-        var inciName = parts[1].Trim();
-        var normalizedInciName = IngredientNormalizer.Normalize(inciName);
-        if (normalizedInciName.Length == 0) continue;
-
-        var ingredient = await _context.Ingredients
+        var allIngredients = await _context.Ingredients
             .Include(i => i.Synonyms)
-            .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedInciName);
-        if (ingredient == null) continue;
+            .ToListAsync();
 
-        var candidateSynonyms = new[] { parts[2].Trim(), parts[3].Trim() };
+        var existingNormalizedNames = allIngredients
+            .Select(i => i.NormalizedInciName)
+            .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var candidate in candidateSynonyms)
+        // First pass: collect head-name candidates grouped by normalized head,
+        // so entries that reduce to the same short name can be detected and
+        // skipped instead of silently pointing to the wrong ingredient.
+        var candidatesByNormalizedHead = new Dictionary<string, List<(Ingredient Ingredient, string Head)>>(StringComparer.Ordinal);
+
+        foreach (var ingredient in allIngredients)
         {
-            if (string.IsNullOrWhiteSpace(candidate)) continue;
+            // Only official Annex records receive a shortened regulatory alias.
+            // Ordinary glossary and manually derived names must stay untouched.
+            if (!ingredient.Source.StartsWith("COSING_Annex_", StringComparison.Ordinal))
+            {
+                continue;
+            }
 
-            var normalizedSynonym = IngredientNormalizer.Normalize(candidate);
-            if (normalizedSynonym.Length == 0) continue;
-            if (normalizedSynonym == normalizedInciName) continue;
+            var head = TryExtractHeadName(ingredient.InciName);
+            if (head == null) continue;
+
+            var normalizedHead = IngredientNormalizer.Normalize(head);
+            if (normalizedHead.Length == 0) continue;
+            if (normalizedHead == ingredient.NormalizedInciName) continue;
+
+            // Do not alias over an ingredient that is already independently
+            // known under this exact name — its own data stays authoritative.
+            if (existingNormalizedNames.Contains(normalizedHead)) continue;
+
+            if (!candidatesByNormalizedHead.TryGetValue(normalizedHead, out var list))
+            {
+                list = new List<(Ingredient, string)>();
+                candidatesByNormalizedHead[normalizedHead] = list;
+            }
+            list.Add((ingredient, head));
+        }
+
+        var added = 0;
+        var skippedAmbiguous = 0;
+
+        foreach (var (normalizedHead, candidates) in candidatesByNormalizedHead)
+        {
+            // Two different regulatory entries reduced to the same short name —
+            // ambiguous, so deliberately add a synonym for neither.
+            var distinctIngredients = candidates.Select(c => c.Ingredient.Id).Distinct().Count();
+            if (distinctIngredients > 1)
+            {
+                skippedAmbiguous++;
+                continue;
+            }
+
+            var (ingredient, head) = candidates[0];
 
             var alreadyExists = ingredient.Synonyms.Any(s =>
-                string.Equals(s.SynonymName, candidate, StringComparison.OrdinalIgnoreCase));
+                string.Equals(s.SynonymName, head, StringComparison.OrdinalIgnoreCase));
             if (alreadyExists) continue;
 
-            ingredient.Synonyms.Add(new IngredientSynonym { SynonymName = candidate });
+            ingredient.Synonyms.Add(new IngredientSynonym { SynonymName = head });
             added++;
         }
+
+        await _context.SaveChangesAsync();
+        Console.WriteLine($"Regulatory head-name synonyms seeded: {added} (skipped {skippedAmbiguous} ambiguous heads).");
     }
-
-    await _context.SaveChangesAsync();
-    Console.WriteLine($"Ingredient synonyms seeded: {added}");
-}
-
 
 }
