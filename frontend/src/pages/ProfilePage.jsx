@@ -32,6 +32,7 @@ function ProfilePage() {
   // The form is a draft copy. The shared profile changes only after Save.
   const [form, setForm] = useState(profile)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(false)
 
 
   const selectSingleValue = (field, value) => {
@@ -53,11 +54,17 @@ function ProfilePage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    await saveProfile(form)
+    const success = await saveProfile(form)
 
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    if (success) {
+      setSaved(true)
+      setSaveError(false)
+      setTimeout(() => setSaved(false), 2000)
+    } else {
+      setSaveError(true)
+    }
   }
+
 
 
   return (
@@ -221,7 +228,12 @@ function ProfilePage() {
                 Save profile
               </button>
 
-              {saved && <span className="profile-saved-message" role="status">✓ Profile saved</span>}
+              {saveError && (
+                <span className="profile-save-error" role="alert">
+                  Could not save your profile. Please check your connection and try again.
+                </span>
+              )}
+
             </div>
           </form>
         </>

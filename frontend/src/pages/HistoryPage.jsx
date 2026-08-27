@@ -8,15 +8,27 @@ function HistoryPage() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
   const [history, setHistory] = useState([])
+  const [loadError, setLoadError] = useState(false)
+  const [actionError, setActionError] = useState('')
+
 
   useEffect(() => {
     if (!isAuthenticated) {
       setHistory([])
+      setLoadError(false)
       return
     }
 
-    getHistory().then(setHistory)
+    getHistory().then((items) => {
+      if (items === null) {
+        setLoadError(true)
+      } else {
+        setHistory(items)
+        setLoadError(false)
+      }
+    })
   }, [isAuthenticated])
+
 
   const viewAnalysis = (item) => {
     navigate('/results', {
@@ -28,13 +40,36 @@ function HistoryPage() {
   }
 
   const deleteAnalysis = async (id) => {
-    if (await removeAnalysis(id)) setHistory(await getHistory())
+  const ok = await removeAnalysis(id)
+  if (!ok) {
+    setActionError('Could not delete this entry. Please try again.')
+    return
   }
+
+  const items = await getHistory()
+  if (items === null) {
+    setActionError('Deleted, but could not refresh the list. Please reload the page.')
+  } else {
+    setHistory(items)
+    setActionError('')
+  }
+}
+
 
   const deleteAllAnalyses = async () => {
     const confirmed = window.confirm('Delete all saved analyses?')
-    if (confirmed && await clearHistory()) setHistory([])
+    if (!confirmed) return
+
+    const ok = await clearHistory()
+    if (ok) {
+      setHistory([])
+      setActionError('')
+    } else {
+      setActionError('Could not clear history. Please try again.')
+    }
   }
+  
+
 
   return (
     <div className="history-page">
@@ -52,11 +87,21 @@ function HistoryPage() {
             Clear history
           </button>
         )}
-      </header>
+            </header>
+
+      {actionError && (
+        <p className="history-action-error" role="alert">{actionError}</p>
+      )}
 
       {isAuthenticated ? (
-        <>
-          {history.length > 0 ? (
+
+                <>
+          {loadError ? (
+            <section className="history-empty">
+              <h2>Could not load your history</h2>
+              <p>Something went wrong while fetching your saved analyses. Please try again later.</p>
+            </section>
+          ) : history.length > 0 ? (
             <div className="history-list">
               {history.map((item) => (
                 <AnalysisHistoryRow
@@ -76,6 +121,7 @@ function HistoryPage() {
               </button>
             </section>
           )}
+
 
           <p className="history-storage-note">
             * Saved to your account. Skin and hair conditions used for personalisation are not included in the saved record.

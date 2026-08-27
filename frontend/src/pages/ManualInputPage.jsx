@@ -52,6 +52,8 @@ function ManualInputPage() {
   // A second, separate piece of state — completely independent from "text".
   // Starts as false. Used as a flag: "is the analysis currently running?"
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
 
   // HOOK: useNavigate()
   // Gives us a function to move the user to a different route/page
@@ -91,6 +93,7 @@ function ManualInputPage() {
     // Update the "loading" state to true.
     // This triggers a re-render, so the UI can show "Analysing..." on the button.
     setLoading(true)
+    setError('')
 
     try {
       // Call the service function and WAIT (await) for the result.
@@ -129,7 +132,7 @@ function ManualInputPage() {
     } catch {
       // If analyseIngredients() throws an error (e.g. network failure),
       // this block runs instead of crashing the app.
-      alert('Something went wrong. Please try again.')
+      setError('Something went wrong. Please try again.')
     } finally {
       // This runs no matter what — whether it succeeded or failed.
       // Reset "loading" back to false, since the analysis attempt is over.
@@ -243,6 +246,10 @@ function ManualInputPage() {
         )}
 
         <div className="manual-form-actions">
+          {error && (
+            <p className="manual-form-error" role="alert">{error}</p>
+          )}
+
           {text.trim() !== '' && (
             <p className="ingredient-count" role="status">
               {willInferIngredientBoundaries

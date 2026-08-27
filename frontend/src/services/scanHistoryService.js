@@ -36,7 +36,7 @@ export const getHistory = async () => {
     const response = await axios.get(`${API_URL}/scanhistory`, { headers: authHeaders() })
     return response.data
   } catch {
-    return []
+    return null
   }
 }
 

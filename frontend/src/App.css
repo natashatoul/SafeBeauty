@@ -1494,11 +1494,15 @@ button {
 }
 
 
-.login-error {
+.manual-form-error,
+.login-error,
+.profile-save-error,
+.history-action-error {
   margin: -6px 0 0;
   color: #b3261e;
   font-size: 0.9rem;
 }
+
 
 .login-divider {
   display: flex;

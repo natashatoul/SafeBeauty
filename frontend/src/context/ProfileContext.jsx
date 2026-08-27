@@ -39,9 +39,11 @@ export function ProfileProvider({ children }) {
   }, [isAuthenticated])
 
   const saveProfile = async (newProfile) => {
-    setProfile(newProfile)
-    await saveProfileToServer(newProfile)
-  }
+  setProfile(newProfile)
+  const result = await saveProfileToServer(newProfile)
+  return result !== null
+}
+
 
 
   // The Provider is what actually broadcasts the data.
