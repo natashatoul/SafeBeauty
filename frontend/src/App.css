@@ -780,7 +780,7 @@ button {
   transform: translateY(0);
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .app-shell {
     grid-template-columns: 260px minmax(0, 1fr);
   }
@@ -1042,6 +1042,42 @@ button {
   width: min(100%, 1040px);
 }
 
+@media (min-width: 1201px) {
+  .results-page {
+    width: min(100%, 1180px);
+  }
+
+  .results-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .results-content {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .results-sidebar {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    display: grid;
+    gap: 18px;
+  }
+
+  .results-sidebar .results-meta {
+    display: block;
+    margin-bottom: 0;
+  }
+
+  .results-meta .summary-card + .summary-card {
+    margin-top: 18px;
+  }
+
+}
+
 .results-header {
   display: flex;
   justify-content: space-between;
@@ -1141,11 +1177,46 @@ button {
   margin-bottom: 5px;
 }
 
+.results-warning {
+  padding: 18px 22px;
+  margin-bottom: 24px;
+  border-left: 5px solid;
+  border-radius: 10px;
+}
+
+.results-warning strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 1.05rem;
+}
+
+.results-warning p {
+  color: inherit;
+}
+
+.results-warning--red {
+  border-color: var(--red);
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.results-warning--amber {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+  color: #684814;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: 280px 1fr;
   gap: 18px;
   margin-bottom: 34px;
+}
+
+@media (min-width: 1201px) {
+  .results-meta {
+    grid-template-columns: 1fr;
+  }
 }
 
 .summary-card {
@@ -1534,6 +1605,36 @@ button {
 
 
 @media (max-width: 768px) {
+  h1 {
+    font-size: 2.1rem;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+  }
+
+  h3 {
+    font-size: 0.76rem;
+  }
+
+  .summary-card strong.personalisation-value {
+    font-size: 1.35rem;
+  }
+
+  p {
+    font-size: 0.84rem;
+  }
+
+  .insight-card p,
+  .summary-card p,
+  .profile-card p,
+  .formula-card-description,
+  .technical-list-note,
+  .technical-ingredient-details p,
+  .technical-flags p {
+    font-size: 0.82rem;
+  }
+
   .manual-form-card {
     padding: 22px;
   }
@@ -1739,6 +1840,26 @@ button {
 }
 
 @media (max-width: 420px) {
+  h1 {
+    font-size: 1.85rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  .summary-card strong.personalisation-value {
+    font-size: 1.2rem;
+  }
+
+  .insight-card,
+  .summary-card,
+  .profile-card,
+  .formula-card,
+  .full-analysis {
+    padding: 18px;
+  }
+
   .app-main {
     padding-inline: 20px;
   }

@@ -144,8 +144,63 @@ function ResultsPage() {
         </button>
       </div>
 
+      <div className="results-layout">
+      <aside className="results-sidebar">
+        {results.aiSummary && (
+          <section className="insight-card results-summary">
+            <h2 className="section-label">AI formula interpretation</h2>
+            <p>{results.aiSummary}</p>
+            <small>
+              * Generated from verified ingredient matches and profile flags. It supports understanding,
+              but is not a medical diagnosis — for a detailed assessment, consult a dermatologist.
+            </small>
+          </section>
+        )}
+
+        <section className="summary-grid results-meta">
+          <article className="summary-card">
+            <h2 className="section-label">Data coverage</h2>
+            <strong>{coverage}%</strong>
+            <p>{totalKnown} verified · {totalUnknown} not matched · {totalIngredients} total</p>
+          </article>
+
+          <article className="summary-card">
+            <h2 className="section-label">Personalisation</h2>
+            <strong className="personalisation-value">
+              {selectedConditions.length > 0
+                ? selectedConditions.map(formatConditionName).join(', ')
+                : formatSkinHairSummary(context.skinType, context.hairCondition)}
+            </strong>
+            <p>
+              {selectedConditions.length > 0
+                ? 'These profile conditions were considered for this analysis.'
+                : 'No specific skin or hair conditions were selected for this analysis.'}
+            </p>
+            <button type="button" className="text-button" onClick={openProfile}>
+              Edit profile
+            </button>
+          </article>
+        </section>
+      </aside>
+
+      <div className="results-content">
+      {(grouped.Red.length > 0 || grouped.Amber.length > 0) && (
+        <section
+          className={`results-warning ${grouped.Red.length > 0 ? 'results-warning--red' : 'results-warning--amber'}`}
+          role="alert"
+        >
+          <strong>
+            {grouped.Red.length > 0 ? 'Review before use' : 'Use with caution'}
+          </strong>
+          <p>
+            {grouped.Red.length > 0
+              ? `${grouped.Red.length} ingredient${grouped.Red.length === 1 ? '' : 's'} with a red regulatory rating: ${grouped.Red.map((item) => item.inciName).join(', ')}.`
+              : `${grouped.Amber.length} ingredient${grouped.Amber.length === 1 ? '' : 's'} require caution: ${grouped.Amber.map((item) => item.inciName).join(', ')}.`}
+          </p>
+        </section>
+      )}
       {totalUnknown > 0 && (
-        <section className="quality-banner" role="alert">
+        <section className="quality-banner results-alert" role="alert">
           <div>
             <strong>Some ingredients could not be checked</strong>
             <p>
@@ -166,46 +221,6 @@ function ResultsPage() {
           )}
         </section>
       )}
-
-      {results.aiSummary && (
-        <section className="insight-card">
-          <h2 className="section-label">AI formula interpretation</h2>
-          <p>{results.aiSummary}</p>
-          <small>
-            * Generated from verified ingredient matches and profile flags. It supports understanding,
-            but is not a medical diagnosis — for a detailed assessment, consult a dermatologist.
-          </small>
-
-        </section>
-      )}
-
-      <section className="summary-grid">
-        <article className="summary-card">
-          <h2 className="section-label">Data coverage</h2>
-          <strong>{coverage}%</strong>
-          <p>{totalKnown} verified · {totalUnknown} not matched · {totalIngredients} total</p>
-        </article>
-
-        <article className="summary-card">
-          <h2 className="section-label">Personalisation</h2>
-          <strong className="personalisation-value">
-            {selectedConditions.length > 0
-              ? selectedConditions.map(formatConditionName).join(', ')
-              : formatSkinHairSummary(context.skinType, context.hairCondition)
-}
-          </strong>
-
-          <p>
-            {selectedConditions.length > 0
-              ? 'These profile conditions were considered for this analysis.'
-              : 'No specific skin or hair conditions were selected for this analysis.'}
-          </p>
-          <button type="button" className="text-button" onClick={openProfile}>
-            Edit profile
-          </button>
-        </article>
-
-      </section>
 
       {selectedConditions.length > 0 && (
         <section className="results-section">
@@ -339,7 +354,7 @@ function ResultsPage() {
         )}
       </section>
 
-      <details className="full-analysis">
+      <details className="full-analysis" open>
         <summary>Show the full technical ingredient list ({totalIngredients})</summary>
         <p className="technical-list-note">
           The complete INCI list is retained for transparency. Ratings describe database and regulatory
@@ -374,6 +389,8 @@ function ResultsPage() {
           </div>
         )}
       </details>
+      </div>
+      </div>
     </div>
   )
 }
