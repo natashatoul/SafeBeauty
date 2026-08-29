@@ -21,22 +21,18 @@ public static class IngredientNormalizer
     {
         ["COCO-CAPRYLATE CAPRATE"] = "COCO-CAPRYLATE/CAPRATE",
         ["COCO-CAPRYLATE/CAPRATE(COCO CAPRYLATE/CAPRATE)"] = "COCO-CAPRYLATE/CAPRATE",
-        ["AQUA / WATER / EAU"] = "AQUA",
+        ["WATER"] = "AQUA",
         ["AQUA/WATER/EAU"] = "AQUA",
         ["WATER(AQUA/EAU)"] = "AQUA",
-        ["WATER (AQUA/EAU)"] = "AQUA",
         ["AVENE AQUA"] = "AQUA",
         ["AVENE THERMAL SPRING WATER"] = "AQUA",
         ["BEES WAX"] = "BEESWAX",
         ["SHEA BUTTER"] = "BUTYROSPERMUM PARKII BUTTER",
         ["C10-30 ALKYL ACRYLATE CROSSPOLYMER"] = "ACRYLATES/C10-30 ALKYL ACRYLATE CROSSPOLYMER",
         ["CERA MICROCRISTALLINA"] = "MICROCRYSTALLINE WAX",
-        ["COPERNICIA CERIFERA CERA / CARNAUBA WAX / CIRE DE CARNAUBA"] = "COPERNICIA CERIFERA CERA",
-        ["BUTYROSPERMUM PARKII BUTTER / SHEA BUTTER"] = "BUTYROSPERMUM PARKII BUTTER",
-
-        // This supplier label has two missing spaces and the common OCR error
-        // "THOM" (the letters "RN" read as "M"). Keep the repair exact: a
-        // global THOM -> THORN replacement could alter an unrelated valid name.
+        ["COPERNICIA CERIFERA CERA/CARNAUBA WAX/CIRE DE CARNAUBA"] = "COPERNICIA CERIFERA CERA",
+        ["BUTYROSPERMUM PARKII BUTTER/SHEA BUTTER"] = "BUTYROSPERMUM PARKII BUTTER",
+        ["TRILAURATE-4 PHOSPHATE"] = "TRILAURETH-4 PHOSPHATE",
         ["LACTOBACILLUS/CENTELLA ASIATICA/GLEDITSIA SINENSIS THOM/HOUTTUYNIA CORDATAEXTRACT/ PHELLODENDRON AMURENSE BARK/POLYGONUM CUSPIDATUMROOT/PRUNELLA VULGARIS/TORILIS JAPONICA EXTRACT FERMENT FILTRATE"] =
             "LACTOBACILLUS/CENTELLA ASIATICA/GLEDITSIA SINENSIS THORN/HOUTTUYNIA CORDATA EXTRACT/PHELLODENDRON AMURENSE BARK/POLYGONUM CUSPIDATUM ROOT/PRUNELLA VULGARIS/TORILIS JAPONICA EXTRACT FERMENT FILTRATE"
     };
@@ -62,7 +58,7 @@ public static class IngredientNormalizer
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex BotanicalCommonName = new(
-        @"^(?<latin>[A-Z][A-Z.'-]+\s+[A-Z][A-Z.'-]+(?:\s+[A-Z][A-Z.'-]+)?)\s+\((?!NANO\b)[A-Z][A-Z '\-]+\)\s+(?<part>BARK|BUD|BULB|BUTTER|CALLUS|EXTRACT|FLOWER|FRUIT|GERM|GUM|HUSK|JUICE|KERNEL|LEAF|OIL|PEEL|POWDER|PULP|RESIN|RHIZOME|ROOT|SEED|SHOOT|SPROUT|STARCH|STEM|WATER|WAX)\b(?<remainder>.*)$",
+        @"^(?<latin>[A-Z][A-Z.'-]+\s+[A-Z][A-Z.'-]+(?:\s+[A-Z][A-Z.'-]+)?)\s+\((?!NANO\b)[A-Z][A-Z '\-]+\)\s+(?<part>BARK|BRAN|BUD|BULB|BUTTER|CALLUS|EXTRACT|FLOWER|FRUIT|GERM|GUM|HUSK|JUICE|KERNEL|LEAF|OIL|PEEL|POWDER|PULP|RESIN|RHIZOME|ROOT|SEED|SHOOT|SPROUT|STARCH|STEM|WATER|WAX)\b(?<remainder>.*)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 
@@ -149,7 +145,9 @@ public static class IngredientNormalizer
         // whitespace cleanup so removal of another synonym cannot leave a
         // double space that prevents the exact comparison.
         normalized = RepeatedParentheticalName.Replace(normalized, "$1");
+        var aliasKey = normalized.Replace(" (", "(").Replace(" / ", "/");
 
-        return ExactAliases.GetValueOrDefault(normalized, normalized);
+        return ExactAliases.GetValueOrDefault(aliasKey, normalized);
+
     }
 }

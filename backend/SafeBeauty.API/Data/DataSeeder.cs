@@ -63,7 +63,9 @@ public class DataSeeder
             "Preservative",
             "UV Filter",
             "Fragrance",
-            "EU Glossary Ingredient"
+            "EU Glossary Ingredient",
+            "Humectants",
+            "Emollients"
         })
         .Distinct() // remove duplicates
         .ToList();
@@ -232,12 +234,15 @@ public class DataSeeder
 
     private async Task SeedCosingIngredientFunctionsAsync()
     {
-        // Guard: this enrichment only needs to run once. If any ingredient already
-        // has a non-empty Function, the CosIng function data has already been applied
-        // on a previous startup, so we skip the whole file to keep startup fast.
-        if (await _context.Ingredients.AnyAsync(i => i.Function != string.Empty))
+        const string source = "COSING_Ingredients_FragranceInventory";
+
+        // Earlier versions only enriched names that had first appeared in an
+        // EU glossary or an Annex. CosIng contains valid INCI names that are
+        // absent from that local glossary extract, so those ingredients were
+        // incorrectly sent to the AI "unknown" fallback.
+        if (await _context.Ingredients.AnyAsync(i => i.Source == source))
         {
-            Console.WriteLine("CosIng ingredient functions already seeded, skipping.");
+            Console.WriteLine("CosIng ingredient inventory already seeded, skipping.");
             return;
         }
 
@@ -256,7 +261,10 @@ public class DataSeeder
         // 1 = INCI name
         // 8 = Function
 
+        var ingredients = await _context.Ingredients
+            .ToDictionaryAsync(i => i.NormalizedInciName, StringComparer.Ordinal);
         var updates = 0;
+        var additions = 0;
 
         foreach (var line in lines.Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)))
         {
@@ -271,20 +279,34 @@ public class DataSeeder
             if (normalizedName.Length == 0) continue;
             if (string.IsNullOrWhiteSpace(function)) continue;
 
-            var existing = await _context.Ingredients
-                .FirstOrDefaultAsync(i => i.NormalizedInciName == normalizedName);
+            if (ingredients.TryGetValue(normalizedName, out var existing))
+            {
+                // Do not overwrite regulatory category/rating here. This only
+                // enriches a record with the official CosIng function.
+                if (string.IsNullOrWhiteSpace(existing.Function))
+                {
+                    existing.Function = function;
+                    updates++;
+                }
+                continue;
+            }
 
-            if (existing == null) continue;
-
-            // Do not overwrite regulatory category/rating here.
-            // This method only enriches ingredients with real CosIng function data.
-            existing.Function = function;
-            updates++;
+            var ingredient = new Ingredient
+            {
+                InciName = inciName,
+                NormalizedInciName = normalizedName,
+                SafetyRating = SafetyRating.Grey,
+                Function = function,
+                Source = source
+            };
+            _context.Ingredients.Add(ingredient);
+            ingredients[normalizedName] = ingredient;
+            additions++;
         }
 
         await _context.SaveChangesAsync();
 
-        Console.WriteLine($"CosIng ingredient functions updated: {updates}");
+        Console.WriteLine($"CosIng inventory imported: {additions} new, {updates} enriched.");
     }
 
 
