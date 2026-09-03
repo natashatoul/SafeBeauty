@@ -7,6 +7,7 @@ import {
 } from 'html5-qrcode'
 import axios from 'axios'
 import { getBarcodeValidationError } from '../utils/barcodeValidation'
+import { getAnalysisCoverage } from '../utils/analysisMetrics'
 import { useProfile } from '../context/ProfileContext'
 import { saveAnalysis } from '../services/scanHistoryService'
 import { getBarcodeScanBox, stopScanner, getCameraErrorMessage } from '../utils/scannerHelpers'
@@ -65,10 +66,7 @@ function ScanPage() {
         skinType: profile.skinType,
         hairCondition: profile.hairCondition
       }
-      const knownCount = results.results?.length ?? 0
-      const unknownCount = results.unknownIngredients?.length ?? 0
-      const totalCount = knownCount + unknownCount
-      const coverage = totalCount > 0 ? Math.round((knownCount / totalCount) * 100) : 0
+      const { knownCount, unknownCount, totalCount, coverage } = getAnalysisCoverage(results)
 
       if (
         sourceIngredients.length > 0 &&

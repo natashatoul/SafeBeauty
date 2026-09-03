@@ -6,6 +6,7 @@ import {
   getProfileSignals,
   getUvOverview
 } from '../utils/formulaInterpretation'
+import { getAnalysisCoverage } from '../utils/analysisMetrics'
 
 const RATING_ORDER = ['Red', 'Amber', 'Green', 'Grey']
 
@@ -103,11 +104,8 @@ function ResultsPage() {
     grouped[rating].push(item)
   })
 
-  const totalKnown = knownIngredients.length
-  const totalUnknown = unknownIngredients.length
-  const totalIngredients = totalKnown + totalUnknown
-  const coverage = totalIngredients > 0 ? Math.round((totalKnown / totalIngredients) * 100) : 0
-  const uncertainInput = totalIngredients > 0 && totalUnknown / totalIngredients >= 0.25
+  const { knownCount, unknownCount, totalCount, coverage } = getAnalysisCoverage(results)
+  const uncertainInput = totalCount > 0 && unknownCount / totalCount >= 0.25
   const isBarcodeAnalysis = context.source === 'Open Beauty Facts'
   const hasEditableSourceIngredients = Array.isArray(context.sourceIngredients)
     && context.sourceIngredients.length > 0
@@ -161,7 +159,7 @@ function ResultsPage() {
           <article className="summary-card">
             <h2 className="section-label">Data coverage</h2>
             <strong>{coverage}%</strong>
-            <p>{totalKnown} verified · {totalUnknown} not matched · {totalIngredients} total</p>
+            <p>{knownCount} verified · {unknownCount} not matched · {totalCount} total</p>
           </article>
 
           <article className="summary-card">
@@ -199,12 +197,12 @@ function ResultsPage() {
           </p>
         </section>
       )}
-      {totalUnknown > 0 && (
+      {unknownCount > 0 && (
         <section className="quality-banner results-alert" role="alert">
           <div>
             <strong>Some ingredients could not be checked</strong>
             <p>
-              {totalUnknown} of {totalIngredients} entries were not found in the verified database.
+              {unknownCount} of {totalCount} entries were not found in the verified database.
               {context.source === 'Open Beauty Facts'
                 ? ' The barcode data may be incomplete or incorrectly split, so please compare it with the product label.'
                 : ' Please check spelling and separators, or compare the list with the product label.'}
@@ -338,7 +336,7 @@ function ResultsPage() {
           <span className="section-label">About these data</span>
           <h2>{uncertainInput ? 'Use this result with caution' : 'Most ingredients were successfully identified'}</h2>
           <p>
-            Source: {context.source || 'Ingredient analysis'}. {totalKnown} of {totalIngredients} entries
+            Source: {context.source || 'Ingredient analysis'}. {knownCount} of {totalCount} entries
             were matched to verified database records. Unmatched entries are preserved below and are not
             silently corrected or used as verified facts in the AI interpretation.
           </p>
@@ -355,7 +353,7 @@ function ResultsPage() {
       </section>
 
       <details className="full-analysis" open>
-        <summary>Show the full technical ingredient list ({totalIngredients})</summary>
+        <summary>Show the full technical ingredient list ({totalCount})</summary>
         <p className="technical-list-note">
           The complete INCI list is retained for transparency. Ratings describe database and regulatory
           information; they are not a simple good/bad score for the finished product.

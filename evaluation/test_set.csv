@@ -1,0 +1,41 @@
+ingredient_name,true_label,source
+Linalool,allergen,EU Annex III (fragrance allergen requiring labelling)
+Limonene,allergen,EU Annex III (fragrance allergen requiring labelling)
+Citronellol,allergen,EU Annex III (fragrance allergen requiring labelling)
+Geraniol,allergen,EU Annex III (fragrance allergen requiring labelling)
+Eugenol,allergen,EU Annex III (fragrance allergen requiring labelling)
+Coumarin,allergen,EU Annex III (fragrance allergen requiring labelling)
+Cinnamal,allergen,EU Annex III (fragrance allergen requiring labelling)
+Citral,allergen,EU Annex III (fragrance allergen requiring labelling)
+Isoeugenol,allergen,EU Annex III (fragrance allergen requiring labelling)
+Farnesol,allergen,EU Annex III (fragrance allergen requiring labelling)
+Hydroquinone,potentially harmful,EU Annex II (prohibited substance)
+Trichloroacetic acid,potentially harmful,EU Annex II (prohibited substance)
+Mercuric oxide,potentially harmful,EU Annex II (prohibited substance)
+2-Naphthol,potentially harmful,EU Annex II (prohibited substance)
+Chloroform,potentially harmful,EU Annex II (prohibited substance)
+Formaldehyde,potentially harmful,EU Annex II (prohibited substance)
+Lead acetate,potentially harmful,EU Annex II (prohibited substance)
+Triphenyl phosphate,potentially harmful,EU Annex II (prohibited substance)
+Dibutyl phthalate,potentially harmful,EU Annex II (prohibited substance)
+Nitrobenzene,potentially harmful,EU Annex II (prohibited substance)
+Glycerin,safe cosmetic ingredient,CosIng - no annex restriction
+Squalane,safe cosmetic ingredient,CosIng - no annex restriction
+Panthenol,safe cosmetic ingredient,CosIng - no annex restriction
+Caprylic/Capric Triglyceride,safe cosmetic ingredient,CosIng - no annex restriction
+Cetyl Alcohol,safe cosmetic ingredient,CosIng - no annex restriction
+Butyrospermum Parkii Butter,safe cosmetic ingredient,CosIng - no annex restriction
+Sodium Hyaluronate,safe cosmetic ingredient,CosIng - no annex restriction
+Tocopherol,safe cosmetic ingredient,CosIng - no annex restriction
+Aloe Barbadensis Leaf Juice,safe cosmetic ingredient,CosIng - no annex restriction
+Dimethicone,safe cosmetic ingredient,CosIng - no annex restriction
+Sodium Lauryl Sulfate,skin irritant,Dermatological literature (no single EU list - documented limitation)
+Sodium Hydroxide,skin irritant,Dermatological literature (no single EU list - documented limitation)
+Salicylic Acid,skin irritant,Dermatological literature (no single EU list - documented limitation)
+Glycolic Acid,skin irritant,Dermatological literature (no single EU list - documented limitation)
+Benzoyl Peroxide,skin irritant,Dermatological literature (no single EU list - documented limitation)
+Alcohol Denat,skin irritant,Dermatological literature (no single EU list - documented limitation)
+Retinol,skin irritant,Dermatological literature (no single EU list - documented limitation)
+Ammonium Lauryl Sulfate,skin irritant,Dermatological literature (no single EU list - documented limitation)
+Menthol,skin irritant,Dermatological literature (no single EU list - documented limitation)
+Lactic Acid,skin irritant,Dermatological literature (no single EU list - documented limitation)

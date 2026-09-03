@@ -1,0 +1,41 @@
+ingredient_name,true_label,predicted_label,confidence
+Linalool,allergen,safe cosmetic ingredient,0.62
+Limonene,allergen,safe cosmetic ingredient,0.64
+Citronellol,allergen,safe cosmetic ingredient,0.69
+Geraniol,allergen,safe cosmetic ingredient,0.69
+Eugenol,allergen,safe cosmetic ingredient,0.7
+Coumarin,allergen,safe cosmetic ingredient,0.69
+Cinnamal,allergen,safe cosmetic ingredient,0.64
+Citral,allergen,safe cosmetic ingredient,0.64
+Isoeugenol,allergen,safe cosmetic ingredient,0.71
+Farnesol,allergen,safe cosmetic ingredient,0.57
+Hydroquinone,potentially harmful,safe cosmetic ingredient,0.68
+Trichloroacetic acid,potentially harmful,potentially harmful,0.6
+Mercuric oxide,potentially harmful,potentially harmful,0.44
+2-Naphthol,potentially harmful,safe cosmetic ingredient,0.67
+Chloroform,potentially harmful,safe cosmetic ingredient,0.46
+Formaldehyde,potentially harmful,potentially harmful,0.63
+Lead acetate,potentially harmful,safe cosmetic ingredient,0.47
+Triphenyl phosphate,potentially harmful,safe cosmetic ingredient,0.58
+Dibutyl phthalate,potentially harmful,potentially harmful,0.76
+Nitrobenzene,potentially harmful,safe cosmetic ingredient,0.57
+Glycerin,safe cosmetic ingredient,safe cosmetic ingredient,0.5
+Squalane,safe cosmetic ingredient,safe cosmetic ingredient,0.59
+Panthenol,safe cosmetic ingredient,safe cosmetic ingredient,0.51
+Caprylic/Capric Triglyceride,safe cosmetic ingredient,safe cosmetic ingredient,0.61
+Cetyl Alcohol,safe cosmetic ingredient,safe cosmetic ingredient,0.65
+Butyrospermum Parkii Butter,safe cosmetic ingredient,safe cosmetic ingredient,0.63
+Sodium Hyaluronate,safe cosmetic ingredient,safe cosmetic ingredient,0.63
+Tocopherol,safe cosmetic ingredient,safe cosmetic ingredient,0.66
+Aloe Barbadensis Leaf Juice,safe cosmetic ingredient,safe cosmetic ingredient,0.78
+Dimethicone,safe cosmetic ingredient,safe cosmetic ingredient,0.58
+Sodium Lauryl Sulfate,skin irritant,safe cosmetic ingredient,0.49
+Sodium Hydroxide,skin irritant,safe cosmetic ingredient,0.55
+Salicylic Acid,skin irritant,safe cosmetic ingredient,0.47
+Glycolic Acid,skin irritant,safe cosmetic ingredient,0.57
+Benzoyl Peroxide,skin irritant,safe cosmetic ingredient,0.62
+Alcohol Denat,skin irritant,safe cosmetic ingredient,0.53
+Retinol,skin irritant,safe cosmetic ingredient,0.78
+Ammonium Lauryl Sulfate,skin irritant,potentially harmful,0.43
+Menthol,skin irritant,safe cosmetic ingredient,0.53
+Lactic Acid,skin irritant,safe cosmetic ingredient,0.47
