@@ -689,6 +689,13 @@ public class DataSeeder
         _ => 0
     };
 
+// Auto-derives ingredient <-> category links for the two broadest CosIng
+// functions directly in SQL, instead of listing every ingredient by hand:
+// Humectants (2200+) and Emollients (3300+) are far too large to seed from
+// a manual CSV. Only these two functions get this bulk treatment; other
+// CosIng functions (solvent, chelating, film forming, etc.) are not mapped
+// to a category this way and stay as raw Function text only.
+
     private async Task SeedFunctionCategoryMappingsAsync(
         Dictionary<string, IngredientCategory> categories)
     {

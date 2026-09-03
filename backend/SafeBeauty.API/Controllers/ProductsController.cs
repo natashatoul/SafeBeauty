@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using SafeBeauty.API.DTOs;
+using SafeBeauty.API.Models;
 using SafeBeauty.API.Services;
 
 namespace SafeBeauty.API.Controllers;
@@ -173,9 +174,7 @@ public class ProductsController : ControllerBase
             var raw = textEl.GetString();
             if (string.IsNullOrWhiteSpace(raw)) continue;
 
-            return raw
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(ingredient => !string.IsNullOrWhiteSpace(ingredient));
+            return IngredientListParser.Parse(new[] { raw });
         }
 
         return Enumerable.Empty<string>();

@@ -9,6 +9,7 @@ public class AiSummaryPromptTests
     [Fact]
     public void BuildMessages_DoesNotExposeUnmatchedIngredientNames()
     {
+        // unit-tests and white-box
         var response = new AnalyseResponse
         {
             Results =

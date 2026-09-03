@@ -16,7 +16,7 @@ public static class IngredientNormalizer
         "(GRAPE)",
         "(SUNFLOWER)"
     ];
-
+    // it is a dictionary of ingredientd that was detected like unknown but in reality ir is synonims
     private static readonly Dictionary<string, string> ExactAliases = new(StringComparer.Ordinal)
     {
         ["COCO-CAPRYLATE CAPRATE"] = "COCO-CAPRYLATE/CAPRATE",
@@ -47,6 +47,14 @@ public static class IngredientNormalizer
 
     private static readonly Regex NumericFormulaReferenceSuffix = new(
         @"\s*\.?\(\d+/\d+\)\s*[.;,]?\s*$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex OrganicIngredientAnnotation = new(
+        @"\s*\*+\s*ORGANIC\s+INGREDIENT\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static readonly Regex FootnoteMarker = new(
+        @"\*+\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex NanoSquareBrackets = new(
@@ -81,6 +89,8 @@ public static class IngredientNormalizer
         // Invariant = "always the same, no matter where it runs".
         var normalized = inciName.Trim().ToUpperInvariant();
         normalized = NanoSquareBrackets.Replace(normalized, "(NANO)");
+        normalized = OrganicIngredientAnnotation.Replace(normalized, string.Empty);
+        normalized = FootnoteMarker.Replace(normalized, string.Empty).Trim();
 
         // A backslash is not part of INCI nomenclature. Brand labels use it to
         // print the same ingredient in several languages, for example

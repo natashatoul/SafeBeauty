@@ -11,7 +11,10 @@ public class DeduplicationTests
     [Fact]
     public async Task RunAsync_MergesDuplicates_AndKeepsCategoriesAndWorstRating()
     {
-        // Arrange: reproduce two historical rows from different official sources.
+        // Integration
+        // Arrange(prepear) - Act - Assert(check)
+        // Reproduce two historical rows from different official sources.
+        // Arrange
         using var database = new TestDatabase();
         var context = database.Context;
 
@@ -62,6 +65,7 @@ public class DeduplicationTests
             NullLogger<IngredientDeduplicationService>.Instance);
 
         // Act
+        // method in the IngredientDeduplicationService
         await service.RunAsync();
 
         context.ChangeTracker.Clear();
@@ -116,7 +120,7 @@ public class DeduplicationTests
     [Fact]
     public async Task RunAsync_PrefersDuplicateWithFunctionMetadata()
     {
-        // Arrange: CosIng may contain a synonym-like row without functions and
+        // CosIng may contain a synonym-like row without functions and
         // a later canonical row with useful function metadata.
         using var database = new TestDatabase();
         var context = database.Context;
@@ -154,7 +158,7 @@ public class DeduplicationTests
     [Fact]
     public async Task RunAsync_PreservesDistinctRestrictions_FromTheSameAnnex()
     {
-        // Arrange
+        
         using var database = new TestDatabase();
         var context = database.Context;
 
@@ -212,7 +216,7 @@ public class DeduplicationTests
     [Fact]
     public async Task UniqueIndex_RejectsDuplicateNormalizedInciName()
     {
-        // Arrange: clean the historical duplicates before applying the index.
+        // Clean the historical duplicates before applying the index.
         using var database = new TestDatabase();
         var context = database.Context;
 

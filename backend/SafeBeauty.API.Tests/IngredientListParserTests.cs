@@ -11,7 +11,7 @@ public class IngredientListParserTests
         {
             "AQUA • GLYCERIN, TOCOPHEROL; XANTHAN GUM\nCITRIC ACID"
         };
-
+// class IngredientListParser method Parse in the model IngredientListParser
         var result = IngredientListParser.Parse(entries);
 
         Assert.Equal(
