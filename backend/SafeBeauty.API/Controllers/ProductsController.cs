@@ -19,7 +19,7 @@ public class ProductsController : ControllerBase
         _httpClient = httpClientFactory.CreateClient();
     }
 
-        //POST - api/Products/barcode/{barcode}
+    //POST - api/Products/barcode/{barcode}
     // Fetches product from Open Beauty Facts API and analises ingredients.
     // POST (not GET) so conditions/ageGroup/gender travel in the body,
     // not in the URL — query strings end up in server access logs.
@@ -117,11 +117,19 @@ public class ProductsController : ControllerBase
         var productName = product.TryGetProperty("product_name", out var nameEl)
         ? nameEl.GetString() ?? string.Empty : string.Empty;
 
-        // Extract ingredient names from the structured ingredients array.
-        // Open Beauty Facts / Open Beauty Facts often contains a parsed
-        // ingredients array, but not always.
-        var ingredientNames = new List<string>();
-        if (product.TryGetProperty("ingredients", out var ingredientsEl) &&
+        // Prefer the raw text field, e.g. "Aqua, Glycerin, Niacinamide" — it
+        // preserves full INCI constructs like "Prunus Amygdalus Dulcis (Sweet
+        // Almond) Oil" as one entry and goes through IngredientListParser/
+        // IngredientNormalizer. Open Beauty Facts' own structured "ingredients"
+        // array sometimes splits such compound names into several broken
+        // fragments, so it is only used as a fallback below.
+        var ingredientNames = ExtractIngredientsFromText(product).ToList();
+
+        // Fallback: some records have no raw text field at all, only the
+        // structured array. Without this fallback, such products would produce
+        // an empty analysis.
+        if (ingredientNames.Count == 0 &&
+            product.TryGetProperty("ingredients", out var ingredientsEl) &&
             ingredientsEl.ValueKind == JsonValueKind.Array)
         {
             foreach (var item in ingredientsEl.EnumerateArray())
@@ -132,15 +140,6 @@ public class ProductsController : ControllerBase
                     if (!string.IsNullOrWhiteSpace(text)) ingredientNames.Add(text);
                 }
             }
-        }
-
-        // Fallback: many Open Beauty Facts records store ingredients only as
-        // a raw text field, for example "Aqua, Glycerin, Niacinamide".
-        // Without this fallback, valid products can be found by barcode but
-        // still produce an empty analysis.
-        if (ingredientNames.Count == 0)
-        {
-            ingredientNames.AddRange(ExtractIngredientsFromText(product));
         }
 
         // Analyse extracted ingredients

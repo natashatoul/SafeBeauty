@@ -35,6 +35,11 @@ builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
 // {
 //     builder.Services.AddDbContext<SafeBeautyDbContext>(options => options.UseSqlServer(connectionString));
 // }
+
+builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+    .AddEntityFrameworkStores<SafeBeautyDbContext>()
+    .AddDefaultTokenProviders();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -54,11 +59,6 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
     };
 });
-
-
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
-    .AddEntityFrameworkStores<SafeBeautyDbContext>()
-    .AddDefaultTokenProviders();
 
 
 builder.Services.AddScoped<DataSeeder>();
