@@ -28,23 +28,33 @@ public class IngredientAnalysisService
         string? ageGroup = null,
         string? gender = null)
     {
-        var response = new AnalyseResponse();
+        var selectedConditions = ParseConditions(userConditions);
+        var parsedIngredients = await ParseAndNormalizeAsync(ingredients);
+        var resolution = await ResolveIngredientsAsync(parsedIngredients);
+        var response = await EnrichAsync(resolution, selectedConditions);
+        response.AiSummary = await BuildSummaryAsync(response, userConditions, ageGroup, gender);
+        return response;
+    }
 
+    private static HashSet<Condition> ParseConditions(List<string>? userConditions)
+    {
         // Convert frontend condition strings into the backend enum values.
         // Unknown strings are ignored, so an old localStorage value cannot break
         // the whole analysis request.
-        var selectedConditions = (userConditions ?? new List<string>())
+        return (userConditions ?? new List<string>())
             .Select(c => Enum.TryParse<Condition>(c, out var condition)
                 ? condition
                 : (Condition?)null)
             .Where(c => c.HasValue)
             .Select(c => c!.Value)
             .ToHashSet();
+    }
 
+    private async Task<ParsedIngredients> ParseAndNormalizeAsync(List<string> ingredients)
+    {
         // Treat each request item defensively: older clients and copied labels
         // may send a complete bullet-separated list as one array element.
         var parsedIngredients = IngredientListParser.Parse(ingredients);
-
         var needsInferredBoundaries = parsedIngredients.Count <= 2
             && ingredients.Any(IngredientListParser.LooksLikeUnseparatedList);
 
@@ -76,22 +86,24 @@ public class IngredientAnalysisService
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
+        return new ParsedIngredients(normalizedIngredients, lookupCandidates);
+    }
+
+    private async Task<IngredientResolution> ResolveIngredientsAsync(ParsedIngredients parsed)
+    {
         var knownIngredients = await _context.Ingredients
             .Include(i => i.CategoryMappings)
             .ThenInclude(m => m.Category)
             .ThenInclude(c => c.ConditionRules)
-            .Where(i => lookupCandidates.Contains(i.NormalizedInciName))
+            .Where(i => parsed.LookupCandidates.Contains(i.NormalizedInciName))
             .AsSplitQuery()
             .ToListAsync();
-
         var knownIngredientLookup = knownIngredients
             .GroupBy(i => IngredientNormalizer.Normalize(i.InciName), StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-
-        var unknownIngredients = normalizedIngredients
+        var unknownIngredients = parsed.NormalizedIngredients
             .Where(name => !knownIngredientLookup.ContainsKey(name))
             .ToList();
-
 
         // Fallback: some products use INN/Ph. Eur. names instead of INCI (e.g.
         // "Glycerol" instead of "Glycerin"). Only queried when something is
@@ -99,13 +111,12 @@ public class IngredientAnalysisService
         if (unknownIngredients.Count > 0)
         {
             var allSynonyms = await _context.IngredientSynonyms
-                       .Include(s => s.Ingredient)
-                       .ThenInclude(i => i.CategoryMappings)
-                       .ThenInclude(m => m.Category)
-                       .ThenInclude(c => c.ConditionRules)
-                       .AsSplitQuery()
-                       .ToListAsync();
-
+                .Include(s => s.Ingredient)
+                .ThenInclude(i => i.CategoryMappings)
+                .ThenInclude(m => m.Category)
+                .ThenInclude(c => c.ConditionRules)
+                .AsSplitQuery()
+                .ToListAsync();
             var synonymLookup = allSynonyms
                 .GroupBy(s => IngredientNormalizer.Normalize(s.SynonymName), StringComparer.Ordinal)
                 .ToDictionary(group => group.Key, group => group.First().Ingredient, StringComparer.Ordinal);
@@ -118,18 +129,28 @@ public class IngredientAnalysisService
                 }
             }
 
-            unknownIngredients = normalizedIngredients
+            unknownIngredients = parsed.NormalizedIngredients
                 .Where(name => !knownIngredientLookup.ContainsKey(name))
                 .ToList();
         }
 
+        return new IngredientResolution(
+            parsed.NormalizedIngredients,
+            knownIngredientLookup,
+            unknownIngredients);
+    }
 
+    private async Task<AnalyseResponse> EnrichAsync(
+        IngredientResolution resolution,
+        HashSet<Condition> selectedConditions)
+    {
+        var response = new AnalyseResponse();
         var shouldClassifyUnknownIngredients =
-            unknownIngredients.Count <= MaxUnknownIngredientsForAiClassification;
+            resolution.UnknownIngredients.Count <= MaxUnknownIngredientsForAiClassification;
 
-        foreach (var cleanedName in normalizedIngredients)
+        foreach (var cleanedName in resolution.NormalizedIngredients)
         {
-            if (!knownIngredientLookup.TryGetValue(cleanedName, out var ingredient))
+            if (!resolution.KnownIngredients.TryGetValue(cleanedName, out var ingredient))
             {
                 response.UnknownIngredients.Add(shouldClassifyUnknownIngredients
                     ? await _huggingFace.ClassifyAsync(cleanedName)
@@ -139,7 +160,6 @@ public class IngredientAnalysisService
                         AiLabel = "Unknown",
                         Confidence = 0
                     });
-
                 continue;
             }
 
@@ -150,7 +170,6 @@ public class IngredientAnalysisService
                     mapping.Category.Name != "UV Filter" ||
                     UvFilterClassifier.IsConfirmedAnnexViMapping(mapping))
                 .ToList();
-
             var result = new IngredientResultDto
             {
                 InciName = ingredient.InciName,
@@ -182,12 +201,29 @@ public class IngredientAnalysisService
                 : string.Empty;
             response.Results.Add(result);
         }
-        response.AiSummary = await _aiSummary.SummariseAsync(
+
+        return response;
+    }
+
+    private Task<string> BuildSummaryAsync(
+        AnalyseResponse response,
+        List<string>? userConditions,
+        string? ageGroup,
+        string? gender)
+    {
+        return _aiSummary.SummariseAsync(
             response,
             userConditions ?? new List<string>(),
             ageGroup,
             gender);
-        return response;
-
     }
+
+    private sealed record ParsedIngredients(
+        List<string> NormalizedIngredients,
+        List<string> LookupCandidates);
+
+    private sealed record IngredientResolution(
+        List<string> NormalizedIngredients,
+        Dictionary<string, Ingredient> KnownIngredients,
+        List<string> UnknownIngredients);
 }
