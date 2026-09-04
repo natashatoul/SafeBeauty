@@ -8,7 +8,8 @@ function HomePage() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
   const [history, setHistory] = useState([])
-  const recentAnalyses = history.slice(0, 5)
+  const recentAnalyses = (history ?? []).slice(0, 5)
+
 
     useEffect(() => {
     if (!isAuthenticated) {

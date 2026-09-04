@@ -60,7 +60,15 @@ const FORMULA_GROUPS = [
     technical: 'Perfuming ingredients',
     description: 'adds scent and may matter for fragrance-sensitive users.',
     matches: (item) => hasCategory(item, 'Fragrance')
+  },
+  {
+    id: 'buffering',
+    title: 'pH balance',
+    technical: 'Buffering agents',
+    description: 'helps keep the product\'s pH stable during storage and use.',
+    matches: (item) => hasFunction(item, 'BUFFERING')
   }
+
 ]
 
 const PRIMARY_ROLE_PRIORITY = [
@@ -69,7 +77,8 @@ const PRIMARY_ROLE_PRIORITY = [
   'moisture',
   'softening',
   'texture',
-  'cleansing'
+  'cleansing',
+  'buffering'
 ]
 
 export const getFormulaGroups = (ingredients) => {
