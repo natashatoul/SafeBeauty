@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 // can subscribe to via useAuth(), instead of passing the token down
 // through props at every level.
@@ -9,9 +9,16 @@ const TOKEN_STORAGE_KEY = 'safebeauty_token'
 
 function loadSavedToken() {
   try {
-    // localStorage.getItem returns null if the key was never set 
-    // that's a valid "not logged in" state, not an error.
-    return localStorage.getItem(TOKEN_STORAGE_KEY)
+    const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+    if (!savedToken) return null
+
+    const payload = JSON.parse(atob(savedToken.split('.')[1]))
+    if (typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now()) {
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+      return null
+    }
+
+    return savedToken
   } catch {
     // Some browsers throw if localStorage is blocked (private mode,
     // strict cookie settings). Treat that the same as "not logged in"
@@ -24,6 +31,16 @@ function loadSavedToken() {
 export function AuthProvider({ children }) {
   // token is either a JWT string, or null when the user isn't logged in.
   const [token, setToken] = useState(loadSavedToken)
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setToken(null)
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+    }
+
+    window.addEventListener('safebeauty:unauthorized', handleUnauthorized)
+    return () => window.removeEventListener('safebeauty:unauthorized', handleUnauthorized)
+  }, [])
 
   // Called after a successful login response from the backend.
   const login = (newToken) => {

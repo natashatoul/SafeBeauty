@@ -21,7 +21,10 @@ public class UserProfileController : ControllerBase
         _context = context;
     }
 
-    private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    private string CurrentUserId => User.Claims
+        .Where(claim => claim.Type == ClaimTypes.NameIdentifier)
+        .Select(claim => claim.Value)
+        .First(value => Guid.TryParse(value, out _));
 
     [HttpGet]
     public async Task<IActionResult> Get()

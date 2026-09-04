@@ -6,7 +6,10 @@ const TOKEN_STORAGE_KEY = 'safebeauty_token'
 const getToken = () => {
   try {
     return localStorage.getItem(TOKEN_STORAGE_KEY)
-  } catch {
+  } catch (error) {
+    if (error.response?.status === 401) {
+      window.dispatchEvent(new Event('safebeauty:unauthorized'))
+    }
     return null
   }
 }
@@ -20,7 +23,10 @@ export const getProfile = async () => {
   try {
     const response = await axios.get(`${API_URL}/userprofile`, { headers: authHeaders() })
     return response.data
-  } catch {
+  } catch (error) {
+    if (error.response?.status === 401) {
+      window.dispatchEvent(new Event('safebeauty:unauthorized'))
+    }
     return null
   }
 }

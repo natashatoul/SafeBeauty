@@ -33,6 +33,7 @@ function ProfilePage() {
   const [form, setForm] = useState(profile)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
 
   const selectSingleValue = (field, value) => {
@@ -54,14 +55,21 @@ function ProfilePage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const success = await saveProfile(form)
+    setIsSaving(true)
+    setSaved(false)
+    setSaveError(false)
 
-    if (success) {
-      setSaved(true)
-      setSaveError(false)
-      setTimeout(() => setSaved(false), 2000)
-    } else {
-      setSaveError(true)
+    try {
+      const success = await saveProfile(form)
+
+      if (success) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      } else {
+        setSaveError(true)
+      }
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -224,9 +232,15 @@ function ProfilePage() {
             </aside>
 
             <div className="profile-actions">
-              <button type="submit" className="primary-button">
-                Save profile
+              <button type="submit" className="primary-button" disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save profile'}
               </button>
+
+              {saved && (
+                <span className="profile-saved-message" role="status">
+                  Profile saved.
+                </span>
+              )}
 
               {saveError && (
                 <span className="profile-save-error" role="alert">

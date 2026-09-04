@@ -21,9 +21,12 @@ public class ScanHistoryController : ControllerBase
         _context = context;
     }
 
-    // The JWT carries the user's Id as ClaimTypes.NameIdentifier (see AccountController.GenerateJwtToken).
-    // [Authorize] already guarantees this claim exists, so no null-check is needed here.
-    private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    // Prefer the Identity GUID when legacy tokens also contain an email-valued
+    // NameIdentifier claim.
+    private string CurrentUserId => User.Claims
+        .Where(claim => claim.Type == ClaimTypes.NameIdentifier)
+        .Select(claim => claim.Value)
+        .First(value => Guid.TryParse(value, out _));
 
     [HttpGet]
     // use in  HomePage.jsx, HistoryPage.jsx
