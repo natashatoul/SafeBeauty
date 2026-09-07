@@ -7,12 +7,22 @@ const AuthContext = createContext()
 
 const TOKEN_STORAGE_KEY = 'safebeauty_token'
 
+// JWTs are base64url-encoded (uses "-"/"_" and drops padding), which atob()
+// cannot decode directly — it only understands standard base64 ("+"/"/").
+// this functiom need to ensure that the JWT is properly decoded to get the payload 
+// and check if the token is expired or not
+function decodeBase64Url(segment) {
+  const base64 = segment.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
+  return atob(padded)
+}
+
 function loadSavedToken() {
   try {
     const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
     if (!savedToken) return null
 
-    const payload = JSON.parse(atob(savedToken.split('.')[1]))
+    const payload = JSON.parse(decodeBase64Url(savedToken.split('.')[1]))
     if (typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now()) {
       localStorage.removeItem(TOKEN_STORAGE_KEY)
       return null

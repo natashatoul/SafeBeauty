@@ -35,7 +35,10 @@ export const getHistory = async () => {
   try {
     const response = await axios.get(`${API_URL}/scanhistory`, { headers: authHeaders() })
     return response.data
-  } catch {
+  } catch (error) {
+    if (error.response?.status === 401) {
+      window.dispatchEvent(new Event('safebeauty:unauthorized'))
+    }
     return null
   }
 }
@@ -51,7 +54,10 @@ export const saveAnalysis = async ({ results, analysisContext = {} }) => {
       results,
       analysisContext: { ...analysisContext, historyId: response.data.id }
     }
-  } catch {
+  } catch (error) {
+    if (error.response?.status === 401) {
+      window.dispatchEvent(new Event('safebeauty:unauthorized'))
+    }
     return null
   }
 }
@@ -67,7 +73,10 @@ export const updateAnalysis = async (id, { results, analysisContext = {} }) => {
       results,
       analysisContext: { ...analysisContext, historyId: id }
     }
-  } catch {
+  } catch (error) {
+    if (error.response?.status === 401) {
+      window.dispatchEvent(new Event('safebeauty:unauthorized'))
+    }
     return null
   }
 }
@@ -76,7 +85,10 @@ export const removeAnalysis = async (id) => {
   try {
     await axios.delete(`${API_URL}/scanhistory/${id}`, { headers: authHeaders() })
     return true
-  } catch {
+  } catch (error) {
+    if (error.response?.status === 401) {
+      window.dispatchEvent(new Event('safebeauty:unauthorized'))
+    }
     return false
   }
 }
@@ -85,7 +97,10 @@ export const clearHistory = async () => {
   try {
     await axios.delete(`${API_URL}/scanhistory`, { headers: authHeaders() })
     return true
-  } catch {
+  } catch (error) {
+    if (error.response?.status === 401) {
+      window.dispatchEvent(new Event('safebeauty:unauthorized'))
+    }
     return false
   }
 }
