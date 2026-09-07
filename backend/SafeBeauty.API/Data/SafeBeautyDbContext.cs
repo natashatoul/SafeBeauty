@@ -25,7 +25,7 @@ public class SafeBeautyDbContext : IdentityDbContext<IdentityUser>
     
     {
         base.OnModelCreating(modelBuilder); // set up tables (AspNetUsers, 
-        // AspNetRoles и т.д.) excactly in this DB. 
+        // AspNetRoles) excactly in this DB. 
         // If do not call base this tables will set up not correct.
         modelBuilder.Entity<Ingredient>()
             .HasIndex(i => i.NormalizedInciName)
