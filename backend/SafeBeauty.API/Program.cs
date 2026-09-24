@@ -6,15 +6,13 @@ using SafeBeauty.API.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using SafeBeauty.API.Authentication;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-// builder.Services.AddControllers();
 builder.Services.AddControllers()
     .AddJsonOptions(options => {
         options.JsonSerializerOptions.Converters.Add(
@@ -30,15 +28,6 @@ builder.Services.AddDbContext<SafeBeautyDbContext>(options =>
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key configuration is missing.");
 
-// if (builder.Environment.IsDevelopment())
-// {
-//     builder.Services.AddDbContext<SafeBeautyDbContext>(options => options.UseSqlite(connectionString));
-// }
-// else
-// {
-//     builder.Services.AddDbContext<SafeBeautyDbContext>(options => options.UseSqlServer(connectionString));
-// }
-
 builder.Services.AddIdentity<IdentityUser, IdentityRole>()
     .AddEntityFrameworkStores<SafeBeautyDbContext>()
     .AddDefaultTokenProviders();
@@ -50,6 +39,10 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    // Keep JWT claim names unchanged so controllers can read the standard
+    // "sub" claim directly instead of relying on legacy claim mapping.
+    options.MapInboundClaims = false;
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -60,6 +53,23 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["Jwt:Issuer"],
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(jwtKey))
+    };
+
+    // Browsers receive the JWT as an HttpOnly cookie. Keeping the bearer
+    // handler means [Authorize] continues to validate the token normally,
+    // but application JavaScript never needs access to the token itself.
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            if (string.IsNullOrEmpty(context.Token)
+                && context.Request.Cookies.TryGetValue(AuthConstants.CookieName, out var token))
+            {
+                context.Token = token;
+            }
+
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -85,7 +95,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:5173",
                 "http://localhost:5174")
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -131,6 +142,28 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
+
+// HttpOnly authentication cookies are sent automatically by the browser.
+// Requiring a custom header on state-changing authenticated requests prevents
+// another site from submitting those requests as ordinary HTML forms.
+app.Use(async (context, next) =>
+{
+    var isStateChangingRequest = HttpMethods.IsPost(context.Request.Method)
+        || HttpMethods.IsPut(context.Request.Method)
+        || HttpMethods.IsPatch(context.Request.Method)
+        || HttpMethods.IsDelete(context.Request.Method);
+
+    if (isStateChangingRequest
+        && context.Request.Cookies.ContainsKey(AuthConstants.CookieName)
+        && context.Request.Headers[AuthConstants.CsrfHeaderName] != "1")
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await context.Response.WriteAsync("Missing CSRF protection header.");
+        return;
+    }
+
+    await next();
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { loginUser } from '../services/authService'
 import { useAuth } from '../context/AuthContext'
+import PasswordInput from '../components/PasswordInput'
 
 function LoginPage() {
   const [email, setEmail] = useState('') // user do
@@ -20,8 +21,8 @@ function LoginPage() {
     setError('') // clean previous errors
 
     try {
-      const data = await loginUser(email, password)
-      login(data.token)
+      await loginUser(email, password)
+      login()
       navigate('/')
     } catch (err) {
       if (err.response) {
@@ -57,12 +58,11 @@ function LoginPage() {
             />
 
             <label htmlFor="login-password">Password</label>
-            <input
+            <PasswordInput
               id="login-password"
-              type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              required
+              autoComplete="current-password"
             />
 
             {error && <p className="login-error" role="alert">{error}</p>} {/* if in error field there is text - show it, if not - nothing show */}

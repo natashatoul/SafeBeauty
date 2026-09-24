@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SafeBeauty.API.Authentication;
 using SafeBeauty.API.Data;
 using SafeBeauty.API.DTOs;
 using SafeBeauty.API.Models;
@@ -21,12 +21,7 @@ public class ScanHistoryController : ControllerBase
         _context = context;
     }
 
-    // Prefer the Identity GUID when legacy tokens also contain an email-valued
-    // NameIdentifier claim.
-    private string CurrentUserId => User.Claims
-        .Where(claim => claim.Type == ClaimTypes.NameIdentifier)
-        .Select(claim => claim.Value)
-        .First(value => Guid.TryParse(value, out _));
+    private string CurrentUserId => User.GetRequiredUserId();
 
     [HttpGet]
     // use in  HomePage.jsx, HistoryPage.jsx

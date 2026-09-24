@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { registerUser } from '../services/authService'
+import PasswordInput from '../components/PasswordInput'
 
 function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -68,12 +69,11 @@ function RegisterPage() {
             />
 
             <label htmlFor="register-password">Password</label>
-            <input
+            <PasswordInput
               id="register-password"
-              type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              required
+              autoComplete="new-password"
             />
 
             {error && <p className="login-error" role="alert">{error}</p>}

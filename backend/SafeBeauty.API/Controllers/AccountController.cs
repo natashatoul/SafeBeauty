@@ -1,14 +1,15 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using SafeBeauty.API.Authentication;
 using SafeBeauty.API.Models;
 using SafeBeauty.API.Services;
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -91,57 +92,80 @@ namespace SafeBeauty.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(AuthModel model)
         {
-            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, isPersistent: false, lockoutOnFailure: false);
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+            {
+                return Unauthorized("Invalid login attempt.");
+            }
+
+            // Validate Identity credentials without creating its separate
+            // application cookie; this API authenticates with the JWT cookie.
+            var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, lockoutOnFailure: false);
 
             if (result.Succeeded)
             {
-                var user = await _userManager.FindByEmailAsync(model.Email);
-                if (user == null)
-                {
-                    return Unauthorized("Invalid login attempt.");
-                }
+                var expiresAt = DateTimeOffset.UtcNow.AddHours(GetJwtExpireHours());
+                var token = GenerateJwtToken(user, expiresAt.UtcDateTime);
+                Response.Cookies.Append(
+                    AuthConstants.CookieName,
+                    token,
+                    BuildAuthCookieOptions(expiresAt));
 
-                var roles = await _userManager.GetRolesAsync(user);
-                var token = GenerateJwtToken(user, roles);
-                return Ok(new { Token = token });
+                return Ok();
             }
 
             return Unauthorized("Invalid login attempt.");
         }
 
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
+        [Authorize]
+        [HttpGet("session")]
+        public IActionResult Session()
         {
-            await _signInManager.SignOutAsync();
-            return Ok("Logged out");
+            return Ok();
         }
-        private string GenerateJwtToken(IdentityUser user, IList<string> roles)
+
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            Response.Cookies.Delete(AuthConstants.CookieName, BuildAuthCookieOptions());
+            return Ok();
+        }
+
+        private double GetJwtExpireHours() =>
+            Convert.ToDouble(_configuration["Jwt:ExpireHours"]);
+
+        private CookieOptions BuildAuthCookieOptions(DateTimeOffset? expires = null)
+        {
+            return new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
+                Expires = expires,
+                IsEssential = true,
+                Path = "/"
+            };
+        }
+
+        private string GenerateJwtToken(IdentityUser user, DateTime expiresAt)
         {
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
                 new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
             };
-
-            // Add roles as claims
-            foreach (var role in roles)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role));
-            }
 
             var jwtKey = _configuration["Jwt:Key"]
                 ?? throw new InvalidOperationException("Jwt:Key configuration is missing.");
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expires = DateTime.Now.AddHours(Convert.ToDouble(_configuration["Jwt:ExpireHours"]));
 
             var token = new JwtSecurityToken(
                 _configuration["Jwt:Issuer"],
                 _configuration["Jwt:Issuer"],
                 claims,
-                expires: expires,
+                expires: expiresAt,
                 signingCredentials: creds
             );
 

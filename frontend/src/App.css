@@ -1473,6 +1473,57 @@ button {
   outline: none;
 }
 
+.auth-loading-screen {
+  display: grid;
+  min-height: 100vh;
+  color: var(--green-dark);
+  font-weight: 600;
+  background: var(--bg);
+  place-items: center;
+}
+
+.password-input-wrapper {
+  position: relative;
+}
+
+.login-card .password-input-wrapper input {
+  padding-right: 48px;
+}
+
+.password-visibility-button {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transform: translateY(-50%);
+  place-items: center;
+}
+
+.password-visibility-button:hover {
+  color: var(--green-dark);
+  background: rgba(94, 133, 97, 0.1);
+}
+
+.password-visibility-button:focus-visible {
+  color: var(--green-dark);
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.password-visibility-button img {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
 .login-card .primary-button,
 .login-card .secondary-button {
   width: 100%;

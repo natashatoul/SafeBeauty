@@ -1,20 +1,4 @@
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || '/api'
-const TOKEN_STORAGE_KEY = 'safebeauty_token'
-
-const getToken = () => {
-  try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
-
-const authHeaders = () => {
-  const token = getToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
+import apiClient from './apiClient'
 
 // selectedConditions and conditionFlags are health-adjacent data (GDPR
 // Article 9). They stay in the browser and are used to compute this one
@@ -33,7 +17,7 @@ const stripPersonalisation = ({ results, analysisContext }) => {
 
 export const getHistory = async () => {
   try {
-    const response = await axios.get(`${API_URL}/scanhistory`, { headers: authHeaders() })
+    const response = await apiClient.get('/scanhistory')
     return response.data
   } catch (error) {
     if (error.response?.status === 401) {
@@ -46,7 +30,7 @@ export const getHistory = async () => {
 export const saveAnalysis = async ({ results, analysisContext = {} }) => {
   try {
     const payload = stripPersonalisation({ results, analysisContext })
-    const response = await axios.post(`${API_URL}/scanhistory`, payload, { headers: authHeaders() })
+    const response = await apiClient.post('/scanhistory', payload)
 
     return {
       id: response.data.id,
@@ -65,7 +49,7 @@ export const saveAnalysis = async ({ results, analysisContext = {} }) => {
 export const updateAnalysis = async (id, { results, analysisContext = {} }) => {
   try {
     const payload = stripPersonalisation({ results, analysisContext })
-    const response = await axios.put(`${API_URL}/scanhistory/${id}`, payload, { headers: authHeaders() })
+    const response = await apiClient.put(`/scanhistory/${id}`, payload)
 
     return {
       id: response.data.id,
@@ -83,7 +67,7 @@ export const updateAnalysis = async (id, { results, analysisContext = {} }) => {
 
 export const removeAnalysis = async (id) => {
   try {
-    await axios.delete(`${API_URL}/scanhistory/${id}`, { headers: authHeaders() })
+    await apiClient.delete(`/scanhistory/${id}`)
     return true
   } catch (error) {
     if (error.response?.status === 401) {
@@ -95,7 +79,7 @@ export const removeAnalysis = async (id) => {
 
 export const clearHistory = async () => {
   try {
-    await axios.delete(`${API_URL}/scanhistory`, { headers: authHeaders() })
+    await apiClient.delete('/scanhistory')
     return true
   } catch (error) {
     if (error.response?.status === 401) {
