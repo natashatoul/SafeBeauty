@@ -5,7 +5,7 @@ namespace SafeBeauty.API.Services;
 public static class UvFilterClassifier
 {
     public const string AnnexSource = "COSING_Annex_VI_v2";
-    public const string CurrentMappingType = "RegulatoryAnnexNormalizedV3";
+    public const string CurrentMappingType = "RegulatoryAnnexNormalizedV5";
 
     private static readonly HashSet<string> MineralFilters = new(StringComparer.Ordinal)
     {
