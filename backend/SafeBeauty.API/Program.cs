@@ -78,6 +78,16 @@ builder.Services.AddScoped<DataSeeder>();
 builder.Services.AddScoped<IngredientDeduplicationService>();
 builder.Services.AddHttpClient<HuggingFaceService>();
 builder.Services.AddHttpClient<AiSummaryService>();
+
+builder.Services.AddHttpClient<PubChemService>(client =>
+{
+    client.BaseAddress = new Uri(
+        "https://pubchem.ncbi.nlm.nih.gov/rest/pug/"
+    );
+
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+
 builder.Services.AddScoped<IngredientAnalysisService>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 builder.Services.AddScoped<EmailService>();
