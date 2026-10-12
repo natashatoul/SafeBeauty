@@ -15,7 +15,7 @@ public class DeduplicationTests
         // Arrange(prepear) - Act - Assert(check)
         // Reproduce two historical rows from different official sources.
         // Arrange
-        using var database = new TestDatabase();
+        using var database = new TestDatabase(startFromLegacyState: true);
         var context = database.Context;
 
         var glossaryCategory = new IngredientCategory
@@ -84,7 +84,7 @@ public class DeduplicationTests
     public async Task RunAsync_CanRunTwice_WithoutChangingCleanedData()
     {
         // Arrange
-        using var database = new TestDatabase();
+        using var database = new TestDatabase(startFromLegacyState: true);
         var context = database.Context;
 
         context.Ingredients.AddRange(
@@ -122,7 +122,7 @@ public class DeduplicationTests
     {
         // CosIng may contain a synonym-like row without functions and
         // a later canonical row with useful function metadata.
-        using var database = new TestDatabase();
+        using var database = new TestDatabase(startFromLegacyState: true);
         var context = database.Context;
 
         context.Ingredients.AddRange(
@@ -159,7 +159,7 @@ public class DeduplicationTests
     public async Task RunAsync_PreservesDistinctRestrictions_FromTheSameAnnex()
     {
         
-        using var database = new TestDatabase();
+        using var database = new TestDatabase(startFromLegacyState: true);
         var context = database.Context;
 
         var first = new Ingredient
@@ -217,7 +217,7 @@ public class DeduplicationTests
     public async Task UniqueIndex_RejectsDuplicateNormalizedInciName()
     {
         // Clean the historical duplicates before applying the index.
-        using var database = new TestDatabase();
+        using var database = new TestDatabase(startFromLegacyState: true);
         var context = database.Context;
 
         context.Ingredients.Add(new Ingredient

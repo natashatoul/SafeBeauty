@@ -15,7 +15,7 @@ public sealed class TestDatabase : IDisposable
 
     public SafeBeautyDbContext Context { get; }
 
-    public TestDatabase()
+    public TestDatabase(bool startFromLegacyState = false)
     {
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
@@ -26,10 +26,20 @@ public sealed class TestDatabase : IDisposable
 
         Context = new SafeBeautyDbContext(options);
 
-        // Reproduce the real upgrade state: the normalized-name column exists,
-        // but the unique index has not been applied yet.
         var migrator = Context.GetService<IMigrator>();
-        migrator.Migrate(NormalizationMigration);
+
+        if (startFromLegacyState)
+        {
+            // Reproduce the real upgrade state: the normalized-name column exists,
+            // but the unique index has not been applied yet.
+            migrator.Migrate(NormalizationMigration);
+            return;
+        }
+
+        // Default to the current schema so tests cover the latest model shape,
+        // including tables such as IngredientFunctions used by the analysis
+        // pipeline. Migration-specific tests can opt into the legacy state.
+        migrator.Migrate();
     }
 
     public void ApplyRemainingMigrations()
