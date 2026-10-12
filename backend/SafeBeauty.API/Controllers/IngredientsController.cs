@@ -42,6 +42,14 @@ namespace SafeBeauty.API.Controllers
                     InciName = i.InciName,
                     CasNumber = i.CasNumber,
                     Function = i.Function,
+                    Functions = i.FunctionMappings
+                        .Select(mapping => new CosmeticFunctionDto
+                        {
+                            Name = mapping.CosmeticFunction.Name,
+                            Description = mapping.CosmeticFunction.Description,
+                            SupportsSkin = mapping.CosmeticFunction.SupportsSkin,
+                            SupportsFormula = mapping.CosmeticFunction.SupportsFormula
+                        }).ToList(),
                     SafetyRating = i.SafetyRating.ToString(),
                     Source = i.Source,
                     Categories = i.CategoryMappings.Select(m => new IngredientCategoryDto
@@ -66,6 +74,14 @@ namespace SafeBeauty.API.Controllers
                     InciName = i.InciName,
                     CasNumber = i.CasNumber,
                     Function = i.Function,
+                    Functions = i.FunctionMappings
+                        .Select(mapping => new CosmeticFunctionDto
+                        {
+                            Name = mapping.CosmeticFunction.Name,
+                            Description = mapping.CosmeticFunction.Description,
+                            SupportsSkin = mapping.CosmeticFunction.SupportsSkin,
+                            SupportsFormula = mapping.CosmeticFunction.SupportsFormula
+                        }).ToList(),
                     SafetyRating = i.SafetyRating.ToString(),
                     Source = i.Source,
                     Categories = i.CategoryMappings.Select(m => new IngredientCategoryDto

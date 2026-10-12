@@ -6,6 +6,7 @@ public class IngredientResultDto
     public string SafetyRating {get; set;} = string.Empty;
     public string Category {get; set;} = string.Empty;
     public string Function {get; set;} = string.Empty;
+    public List<CosmeticFunctionDto> Functions { get; set; } = new();
     public bool IsUvFilter { get; set; }
     public string UvFilterType { get; set; } = string.Empty;
     public List<ConditionFlagDto> ConditionFlags  {get; set;} = new();
