@@ -14,6 +14,8 @@ public class SafeBeautyDbContext : IdentityDbContext<IdentityUser>
     public DbSet<Ingredient> Ingredients { get; set; }
     public DbSet<IngredientCategory> IngredientCategories { get; set; }
     public DbSet<IngredientCategoryMapping> IngredientCategoryMappings { get; set; }
+    public DbSet<CosmeticFunction> CosmeticFunctions { get; set; }
+    public DbSet<IngredientFunction> IngredientFunctions { get; set; }
     public DbSet<IngredientSynonym> IngredientSynonyms { get; set; }
     public DbSet<AnnexRestriction> AnnexRestrictions { get; set; }
     public DbSet<ConditionRule> ConditionRules { get; set; }
@@ -43,6 +45,23 @@ public class SafeBeautyDbContext : IdentityDbContext<IdentityUser>
             .HasOne(m => m.Category)
             .WithMany(c => c.IngredientMappings)
             .HasForeignKey(m => m.CategoryId);
+
+        modelBuilder.Entity<CosmeticFunction>()
+            .HasIndex(function => function.Name)
+            .IsUnique();
+
+        modelBuilder.Entity<IngredientFunction>()
+            .HasKey(mapping => new { mapping.IngredientId, mapping.CosmeticFunctionId });
+
+        modelBuilder.Entity<IngredientFunction>()
+            .HasOne(mapping => mapping.Ingredient)
+            .WithMany(ingredient => ingredient.FunctionMappings)
+            .HasForeignKey(mapping => mapping.IngredientId);
+
+        modelBuilder.Entity<IngredientFunction>()
+            .HasOne(mapping => mapping.CosmeticFunction)
+            .WithMany(function => function.IngredientMappings)
+            .HasForeignKey(mapping => mapping.CosmeticFunctionId);
 
         modelBuilder.Entity<ConditionRule>()
             .HasOne(cr => cr.Category)

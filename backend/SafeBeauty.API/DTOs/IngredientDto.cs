@@ -6,6 +6,7 @@ public class IngredientDto
     public string InciName { get; set; } = string.Empty;
     public string? CasNumber { get; set; }
     public string Function { get; set; } = string.Empty;
+    public List<CosmeticFunctionDto> Functions { get; set; } = new();
     public string SafetyRating { get; set; } = string.Empty;
     public string Source { get; set; } = string.Empty;
     public List<IngredientCategoryDto> Categories { get; set; } = new();

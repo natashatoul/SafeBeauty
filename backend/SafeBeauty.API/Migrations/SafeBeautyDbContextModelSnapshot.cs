@@ -268,6 +268,34 @@ namespace SafeBeauty.API.Migrations
                     b.ToTable("ConditionRules");
                 });
 
+            modelBuilder.Entity("SafeBeauty.API.Models.CosmeticFunction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SupportsFormula")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("SupportsSkin")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("CosmeticFunctions");
+                });
+
             modelBuilder.Entity("SafeBeauty.API.Models.Ingredient", b =>
                 {
                     b.Property<int>("Id")
@@ -347,6 +375,21 @@ namespace SafeBeauty.API.Migrations
                     b.HasIndex("CategoryId");
 
                     b.ToTable("IngredientCategoryMappings");
+                });
+
+            modelBuilder.Entity("SafeBeauty.API.Models.IngredientFunction", b =>
+                {
+                    b.Property<int>("IngredientId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CosmeticFunctionId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("IngredientId", "CosmeticFunctionId");
+
+                    b.HasIndex("CosmeticFunctionId");
+
+                    b.ToTable("IngredientFunctions");
                 });
 
             modelBuilder.Entity("SafeBeauty.API.Models.IngredientSynonym", b =>
@@ -524,6 +567,25 @@ namespace SafeBeauty.API.Migrations
                     b.Navigation("Ingredient");
                 });
 
+            modelBuilder.Entity("SafeBeauty.API.Models.IngredientFunction", b =>
+                {
+                    b.HasOne("SafeBeauty.API.Models.CosmeticFunction", "CosmeticFunction")
+                        .WithMany("IngredientMappings")
+                        .HasForeignKey("CosmeticFunctionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SafeBeauty.API.Models.Ingredient", "Ingredient")
+                        .WithMany("FunctionMappings")
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CosmeticFunction");
+
+                    b.Navigation("Ingredient");
+                });
+
             modelBuilder.Entity("SafeBeauty.API.Models.IngredientSynonym", b =>
                 {
                     b.HasOne("SafeBeauty.API.Models.Ingredient", "Ingredient")
@@ -557,11 +619,18 @@ namespace SafeBeauty.API.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SafeBeauty.API.Models.CosmeticFunction", b =>
+                {
+                    b.Navigation("IngredientMappings");
+                });
+
             modelBuilder.Entity("SafeBeauty.API.Models.Ingredient", b =>
                 {
                     b.Navigation("AnnexRestrictions");
 
                     b.Navigation("CategoryMappings");
+
+                    b.Navigation("FunctionMappings");
 
                     b.Navigation("Synonyms");
                 });

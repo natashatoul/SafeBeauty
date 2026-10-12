@@ -1,5 +1,7 @@
 
 using Microsoft.EntityFrameworkCore;
+using CsvHelper;
+using System.Globalization;
 using SafeBeauty.API.Data;
 using SafeBeauty.API.DTOs;
 using SafeBeauty.API.Models;
@@ -9,6 +11,9 @@ namespace SafeBeauty.API.Services;
 
 public class IngredientAnalysisService
 {
+    private static readonly Lazy<IReadOnlyDictionary<string, string>> FunctionCatalog =
+        new(LoadFunctionCatalog);
+
     private readonly SafeBeautyDbContext _context;
     private readonly HuggingFaceService _huggingFace;
     private readonly AiSummaryService _aiSummary;
@@ -95,6 +100,8 @@ public class IngredientAnalysisService
             .Include(i => i.CategoryMappings)
             .ThenInclude(m => m.Category)
             .ThenInclude(c => c.ConditionRules)
+            .Include(i => i.FunctionMappings)
+            .ThenInclude(mapping => mapping.CosmeticFunction)
             .Where(i => parsed.LookupCandidates.Contains(i.NormalizedInciName))
             .AsSplitQuery()
             .ToListAsync();
@@ -148,18 +155,22 @@ public class IngredientAnalysisService
         var shouldClassifyUnknownIngredients =
             resolution.UnknownIngredients.Count <= MaxUnknownIngredientsForAiClassification;
 
-        foreach (var cleanedName in resolution.NormalizedIngredients)
+        for (var inputOrder = 0; inputOrder < resolution.NormalizedIngredients.Count; inputOrder++)
         {
+            var cleanedName = resolution.NormalizedIngredients[inputOrder];
             if (!resolution.KnownIngredients.TryGetValue(cleanedName, out var ingredient))
             {
-                response.UnknownIngredients.Add(shouldClassifyUnknownIngredients
+                var unknownIngredient = shouldClassifyUnknownIngredients
                     ? await _huggingFace.ClassifyAsync(cleanedName)
                     : new AiIngredientResultDto
                     {
                         Name = cleanedName,
                         AiLabel = "Unknown",
-                        Confidence = 0
-                    });
+                        Confidence = 0,
+                        ClassificationStatus = "SkippedLimit"
+                    };
+                unknownIngredient.InputOrder = inputOrder;
+                response.UnknownIngredients.Add(unknownIngredient);
                 continue;
             }
 
@@ -170,15 +181,18 @@ public class IngredientAnalysisService
                     mapping.Category.Name != "UV Filter" ||
                     UvFilterClassifier.IsConfirmedAnnexViMapping(mapping))
                 .ToList();
+            var functions = GetFunctions(ingredient);
             var result = new IngredientResultDto
             {
+                InputOrder = inputOrder,
                 InciName = ingredient.InciName,
                 SafetyRating = ingredient.SafetyRating.ToString(),
                 IsUvFilter = confirmedUvMapping,
                 Category = string.Join(", ", relevantMappings
                     .Select(m => m.Category.Name)
                     .OrderBy(name => name)),
-                Function = ingredient.Function,
+                Function = string.Join(", ", functions.Select(function => function.Name)),
+                Functions = functions,
                 // Personalisation happens here.
                 // If the user did not select any conditions, this returns an
                 // empty list. If they selected conditions, only matching rules
@@ -203,6 +217,66 @@ public class IngredientAnalysisService
         }
 
         return response;
+    }
+
+    private static List<CosmeticFunctionDto> GetFunctions(Ingredient ingredient)
+    {
+        if (ingredient.FunctionMappings.Count > 0)
+        {
+            return ingredient.FunctionMappings
+                .Select(mapping => mapping.CosmeticFunction)
+                .OrderBy(function => function.Name)
+                .Select(function => new CosmeticFunctionDto
+                {
+                    Name = function.Name,
+                    Description = function.Description,
+                    SupportsSkin = function.SupportsSkin,
+                    SupportsFormula = function.SupportsFormula
+                })
+                .ToList();
+        }
+
+        // Compatibility for test fixtures and databases before their first
+        // post-migration seed run. Production data are sourced from links.
+        return ingredient.Function
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(name =>
+            {
+                var purpose = CosmeticFunctionPurposeCatalog.GetPurpose(name);
+                return new CosmeticFunctionDto
+                {
+                    Name = name,
+                    Description = FunctionCatalog.Value.GetValueOrDefault(name, string.Empty),
+                    SupportsSkin = purpose.SupportsSkin,
+                    SupportsFormula = purpose.SupportsFormula
+                };
+            })
+            .ToList();
+    }
+
+    private static IReadOnlyDictionary<string, string> LoadFunctionCatalog()
+    {
+        var filePath = Path.Combine(AppContext.BaseDirectory, "SeedData", "COSING_Functions.csv");
+        if (!File.Exists(filePath)) return new Dictionary<string, string>();
+
+        using var reader = new StreamReader(filePath);
+        using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+        var catalog = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        csv.Read();
+        csv.ReadHeader();
+        while (csv.Read())
+        {
+            var name = csv.GetField("name")?.Trim();
+            var description = csv.GetField("description")?.Trim();
+            if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(description))
+            {
+                catalog[name] = description;
+            }
+        }
+
+        return catalog;
     }
 
     private Task<string> BuildSummaryAsync(

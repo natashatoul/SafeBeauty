@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SafeBeauty.API.Models;
 using SafeBeauty.API.Models.Enums;
+using SafeBeauty.API.Services;
 
 
 namespace SafeBeauty.API.Data;
@@ -9,6 +10,14 @@ namespace SafeBeauty.API.Data;
 // Categories are seeded first (no FK), then condition rules and ingredients (with FK).
 public class DataSeeder
 {
+    private static readonly string[] ConditionalAnnexMarkers =
+    [
+        "except if",
+        "except for normal content",
+        "provided that the concentration does not exceed",
+        "shall be below"
+    ];
+
     private readonly SafeBeautyDbContext _context;
     private readonly string _dataPath;
 
@@ -23,10 +32,12 @@ public class DataSeeder
     public async Task SeedAsync()
     {
         var categories = await SeedCategoriesAsync();
+        var cosmeticFunctions = await SeedCosmeticFunctionsAsync();
         await SeedConditionRulesAsync(categories);
         await RemoveManualIngredientSeedDataAsync();
         await SeedEuGlossaryAsync(categories);
-        await SeedCosingIngredientFunctionsAsync();
+        await SeedCosingIngredientFunctionsAsync(cosmeticFunctions);
+        await SeedSupportedFamilyAliasesAsync(cosmeticFunctions);
         await SeedGenericFragranceTermsAsync(categories);
         await SeedAnnexIIAsync(categories);
         await SeedAnnexAsync("COSING_Annex_III_v2.txt", "Restricted Substance", SafetyRating.Amber, string.Empty, categories);
@@ -39,6 +50,81 @@ public class DataSeeder
         await SeedRegulatoryHeadNameSynonymsAsync();
 
 
+    }
+
+    private async Task SeedSupportedFamilyAliasesAsync(
+        Dictionary<string, CosmeticFunction> cosmeticFunctions)
+    {
+        // Some labels omit the plant part from one of the four CosIng Opuntia
+        // tuna extracts. Their shared skin-related function can be represented
+        // safely, but the alias deliberately does not claim a specific part.
+        const string aliasName = "OPUNTIA TUNA EXTRACT";
+        const string functionName = "SKIN CONDITIONING";
+        var normalizedAlias = IngredientNormalizer.Normalize(aliasName);
+
+        var ingredient = await _context.Ingredients
+            .Include(item => item.FunctionMappings)
+            .FirstOrDefaultAsync(item => item.NormalizedInciName == normalizedAlias);
+
+        if (ingredient == null)
+        {
+            ingredient = new Ingredient
+            {
+                InciName = aliasName,
+                NormalizedInciName = normalizedAlias,
+                SafetyRating = SafetyRating.Grey,
+                Function = functionName,
+                Source = "SafeBeauty derived alias: CosIng Opuntia Tuna extract family"
+            };
+            _context.Ingredients.Add(ingredient);
+        }
+
+        if (cosmeticFunctions.TryGetValue(functionName, out var cosmeticFunction)
+            && ingredient.FunctionMappings.All(mapping =>
+                mapping.CosmeticFunctionId != cosmeticFunction.Id))
+        {
+            ingredient.FunctionMappings.Add(new IngredientFunction
+            {
+                CosmeticFunction = cosmeticFunction
+            });
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<Dictionary<string, CosmeticFunction>> SeedCosmeticFunctionsAsync()
+    {
+        var filePath = Path.Combine(_dataPath, "COSING_Functions.csv");
+        var functions = await _context.CosmeticFunctions
+            .ToDictionaryAsync(function => function.Name, StringComparer.OrdinalIgnoreCase);
+
+        if (!File.Exists(filePath)) return functions;
+
+        var lines = await ReadCsvRecordsAsync(filePath);
+        foreach (var line in lines.Skip(1).Where(line => !string.IsNullOrWhiteSpace(line)))
+        {
+            var parts = ParseCsvLine(line);
+            if (parts.Length < 2) continue;
+
+            var name = parts[0].Trim();
+            var description = parts[1].Trim();
+            if (name.Length == 0) continue;
+
+            var purpose = CosmeticFunctionPurposeCatalog.GetPurpose(name);
+            if (!functions.TryGetValue(name, out var function))
+            {
+                function = new CosmeticFunction { Name = name };
+                _context.CosmeticFunctions.Add(function);
+                functions[name] = function;
+            }
+
+            function.Description = description;
+            function.SupportsSkin = purpose.SupportsSkin;
+            function.SupportsFormula = purpose.SupportsFormula;
+        }
+
+        await _context.SaveChangesAsync();
+        return functions;
     }
 
     // 1. Create IngredientCategory records without using ingredient_categories.csv.
@@ -232,19 +318,10 @@ public class DataSeeder
         }
     }
 
-    private async Task SeedCosingIngredientFunctionsAsync()
+    private async Task SeedCosingIngredientFunctionsAsync(
+        Dictionary<string, CosmeticFunction> cosmeticFunctions)
     {
         const string source = "COSING_Ingredients_FragranceInventory";
-
-        // Earlier versions only enriched names that had first appeared in an
-        // EU glossary or an Annex. CosIng contains valid INCI names that are
-        // absent from that local glossary extract, so those ingredients were
-        // incorrectly sent to the AI "unknown" fallback.
-        if (await _context.Ingredients.AnyAsync(i => i.Source == source))
-        {
-            Console.WriteLine("CosIng ingredient inventory already seeded, skipping.");
-            return;
-        }
 
         var filePath = Path.Combine(_dataPath, "COSING_Ingredients-Fragrance Inventory_v2.csv");
 
@@ -263,8 +340,18 @@ public class DataSeeder
 
         var ingredients = await _context.Ingredients
             .ToDictionaryAsync(i => i.NormalizedInciName, StringComparer.Ordinal);
+        var existingLinks = (await _context.IngredientFunctions
+                .Select(mapping => new
+                {
+                    mapping.Ingredient.NormalizedInciName,
+                    FunctionName = mapping.CosmeticFunction.Name
+                })
+                .ToListAsync())
+            .Select(mapping => $"{mapping.NormalizedInciName}\u001F{mapping.FunctionName}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var updates = 0;
         var additions = 0;
+        var linkAdditions = 0;
 
         foreach (var line in lines.Skip(1).Where(l => !string.IsNullOrWhiteSpace(l)))
         {
@@ -288,25 +375,43 @@ public class DataSeeder
                     existing.Function = function;
                     updates++;
                 }
-                continue;
+            }
+            else
+            {
+                existing = new Ingredient
+                {
+                    InciName = inciName,
+                    NormalizedInciName = normalizedName,
+                    SafetyRating = SafetyRating.Grey,
+                    Function = function,
+                    Source = source
+                };
+                _context.Ingredients.Add(existing);
+                ingredients[normalizedName] = existing;
+                additions++;
             }
 
-            var ingredient = new Ingredient
+            foreach (var functionName in function.Split(
+                         ',',
+                         StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
             {
-                InciName = inciName,
-                NormalizedInciName = normalizedName,
-                SafetyRating = SafetyRating.Grey,
-                Function = function,
-                Source = source
-            };
-            _context.Ingredients.Add(ingredient);
-            ingredients[normalizedName] = ingredient;
-            additions++;
+                if (!cosmeticFunctions.TryGetValue(functionName, out var cosmeticFunction)) continue;
+
+                var linkKey = $"{normalizedName}\u001F{cosmeticFunction.Name}";
+                if (!existingLinks.Add(linkKey)) continue;
+
+                existing.FunctionMappings.Add(new IngredientFunction
+                {
+                    CosmeticFunction = cosmeticFunction
+                });
+                linkAdditions++;
+            }
         }
 
         await _context.SaveChangesAsync();
 
-        Console.WriteLine($"CosIng inventory imported: {additions} new, {updates} enriched.");
+        Console.WriteLine(
+            $"CosIng inventory imported: {additions} new, {updates} enriched, {linkAdditions} function links added.");
     }
 
 
@@ -420,15 +525,18 @@ public class DataSeeder
         return records;
     }
 
-    private static List<string> SplitInciNames(string inciField)
+    private static List<string> SplitInciNames(
+        string inciField,
+        IEnumerable<string>? knownNames = null)
     {
-        return inciField
-            .Split(new[] { ",", "/", ";" }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(n => n.Trim())
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return IngredientListParser.Parse(inciField, knownNames);
     }
+
+    private static List<string> SplitLegacyInciNames(string inciField) => inciField
+        .Split([",", "/", ";"], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(name => name.Length > 0)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
 
     // its a markers
     private static readonly string[] HeadNameCutMarkers =
@@ -463,17 +571,24 @@ public class DataSeeder
 
     private async Task SeedAnnexIIAsync(Dictionary<string, IngredientCategory> categories)
     {
-        const string mappingType = "RegulatoryAnnexNormalizedV3";
-        if (await _context.IngredientCategoryMappings
-            .AnyAsync(m =>
-                m.Source == "COSING_Annex_II" &&
-                m.MappingType == mappingType)) return;
+        const string mappingType = "RegulatoryAnnexNormalizedV5";
 
         var prohibitedCategory = await EnsureCategoryAsync("Prohibited Substance", categories);
         var restrictedCategory = await EnsureCategoryAsync("Restricted Substance", categories);
 
         var filePath = Path.Combine(_dataPath, "COSING_Annex_II_v2.txt");
         var lines = await ReadCsvRecordsAsync(filePath);
+        var knownInciNames = await _context.Ingredients
+            .Select(ingredient => ingredient.InciName)
+            .ToListAsync();
+        var inciFields = lines.Skip(5)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Select(ParseCsvLine)
+            .Where(parts => parts.Length >= 9)
+            .Select(parts => parts[8].Trim())
+            .ToList();
+        await RemoveLegacySplitMappingsAsync(
+            "COSING_Annex_II", inciFields, knownInciNames, mappingType);
         var pendingByName = new Dictionary<string, Ingredient>(StringComparer.Ordinal);
 
         foreach (var line in lines.Skip(5).Where(l => !string.IsNullOrWhiteSpace(l)))
@@ -490,8 +605,8 @@ public class DataSeeder
             // alone cannot prove whether that exception is satisfied, so these
             // entries must be shown as restricted/caution rather than as an
             // unconditional prohibition.
-            var hasConditionalException = chemicalName.Contains(
-                "except if", StringComparison.OrdinalIgnoreCase);
+            var hasConditionalException =
+                HasConditionalAnnexException(chemicalName);
             var category = hasConditionalException
                 ? restrictedCategory
                 : prohibitedCategory;
@@ -503,7 +618,7 @@ public class DataSeeder
                 ? $"Annex II entry contains a conditional exception: {chemicalName}"
                 : "Substance is listed in CosIng Annex II.";
 
-            var names = SplitInciNames(inciName);
+            var names = SplitInciNames(inciName, knownInciNames);
             if (names.Count == 0 && !string.IsNullOrWhiteSpace(chemicalName))
             {
                 names.Add(chemicalName);
@@ -563,6 +678,11 @@ public class DataSeeder
         }
         await _context.SaveChangesAsync();
     }
+
+    private static bool HasConditionalAnnexException(string description) =>
+        ConditionalAnnexMarkers.Any(marker =>
+            description.Contains(marker, StringComparison.OrdinalIgnoreCase));
+
     private async Task SeedAnnexAsync(
         string fileName,
         string categoryName,
@@ -571,16 +691,23 @@ public class DataSeeder
         Dictionary<string, IngredientCategory> categories)
     {
         var source = Path.GetFileNameWithoutExtension(fileName);
-        const string mappingType = "RegulatoryAnnexNormalizedV3";
-        if (await _context.IngredientCategoryMappings
-            .AnyAsync(m =>
-                m.Source == source &&
-                m.MappingType == mappingType)) return;
+        const string mappingType = "RegulatoryAnnexNormalizedV5";
 
         var category = await EnsureCategoryAsync(categoryName, categories);
 
         var filePath = Path.Combine(_dataPath, fileName);
         var lines = await ReadCsvRecordsAsync(filePath);
+        var knownInciNames = await _context.Ingredients
+            .Select(ingredient => ingredient.InciName)
+            .ToListAsync();
+        var inciFields = lines.Skip(5)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Select(ParseCsvLine)
+            .Where(parts => parts.Length >= 3)
+            .Select(parts => parts[2].Trim())
+            .ToList();
+        await RemoveLegacySplitMappingsAsync(
+            source, inciFields, knownInciNames, mappingType);
         var pendingByName = new Dictionary<string, Ingredient>(StringComparer.Ordinal);
 
         foreach (var line in lines.Skip(5).Where(l => !string.IsNullOrWhiteSpace(l)))
@@ -592,7 +719,7 @@ public class DataSeeder
             var chemicalName = parts[1].Trim();
             var casNumber = parts.Length > 3 ? parts[3].Trim() : string.Empty;
 
-            var names = SplitInciNames(inciField);
+            var names = SplitInciNames(inciField, knownInciNames);
 
             if (names.Count == 0)
             {
@@ -634,6 +761,87 @@ public class DataSeeder
             }
         }
         await _context.SaveChangesAsync();
+    }
+
+    private async Task RemoveLegacySplitMappingsAsync(
+        string source,
+        IReadOnlyCollection<string> inciFields,
+        IReadOnlyCollection<string> knownInciNames,
+        string currentMappingType)
+    {
+        var desiredNames = inciFields
+            .SelectMany(field => SplitInciNames(field, knownInciNames))
+            .Select(IngredientNormalizer.Normalize)
+            .Where(name => name.Length > 0)
+            .ToHashSet(StringComparer.Ordinal);
+        var legacyFragments = inciFields
+            .SelectMany(SplitLegacyInciNames)
+            .Select(IngredientNormalizer.Normalize)
+            .Where(name => name.Length > 0 && !desiredNames.Contains(name))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (legacyFragments.Count == 0) return;
+
+        var staleMappings = await _context.IngredientCategoryMappings
+            .Include(mapping => mapping.Ingredient)
+            .Where(mapping =>
+                mapping.Source == source &&
+                mapping.MappingType != currentMappingType &&
+                legacyFragments.Contains(mapping.Ingredient.NormalizedInciName))
+            .ToListAsync();
+
+        if (staleMappings.Count == 0) return;
+
+        var affectedIngredientIds = staleMappings
+            .Select(mapping => mapping.IngredientId)
+            .Distinct()
+            .ToList();
+        _context.IngredientCategoryMappings.RemoveRange(staleMappings);
+        await _context.SaveChangesAsync();
+
+        var affectedIngredients = await _context.Ingredients
+            .Include(ingredient => ingredient.CategoryMappings)
+            .ThenInclude(mapping => mapping.Category)
+            .Where(ingredient => affectedIngredientIds.Contains(ingredient.Id))
+            .ToListAsync();
+
+        foreach (var ingredient in affectedIngredients)
+        {
+            RecalculateSafetyFromMappings(ingredient);
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    private static void RecalculateSafetyFromMappings(Ingredient ingredient)
+    {
+        var mapping = ingredient.CategoryMappings
+            .OrderByDescending(item => item.Category.Name switch
+            {
+                "Prohibited Substance" => 3,
+                "Restricted Substance" => 2,
+                "Colorant" or "Preservative" or "UV Filter" => 1,
+                _ => 0
+            })
+            .FirstOrDefault();
+
+        ingredient.SafetyRating = mapping?.Category.Name switch
+        {
+            "Prohibited Substance" => SafetyRating.Red,
+            "Restricted Substance" => SafetyRating.Amber,
+            "Colorant" or "Preservative" or "UV Filter" => SafetyRating.Green,
+            _ => SafetyRating.Grey
+        };
+
+        if (!ingredient.Source.StartsWith("COSING_Annex_", StringComparison.Ordinal)) return;
+
+        ingredient.Source = ingredient.CategoryMappings
+            .FirstOrDefault(item => !item.Source.StartsWith("COSING_Annex_", StringComparison.Ordinal))
+            ?.Source
+            ?? (string.IsNullOrWhiteSpace(ingredient.Function)
+                ? "RegulatoryAnnexCleanup"
+                : "COSING_Ingredients_FragranceInventory");
     }
 
     private async Task<Ingredient?> FindTrackedIngredientAsync(
@@ -823,9 +1031,11 @@ public class DataSeeder
         });
     }
 
-    // it is a scale of trastworth jf ingredient source
+    // Higher-priority mappings replace less authoritative category metadata.
     private static int GetMappingPriority(string mappingType) => mappingType switch
     {
+        "RegulatoryAnnexNormalizedV5" => 9,
+        "RegulatoryAnnexNormalizedV4" => 8,
         "RegulatoryAnnexNormalizedV3" => 7,
         "RegulatoryAnnexMultilineV2" => 6,
         "RegulatoryAnnexParsed" => 5,
