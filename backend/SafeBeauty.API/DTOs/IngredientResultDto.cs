@@ -2,6 +2,7 @@ namespace SafeBeauty.API.DTOs;
 
 public class IngredientResultDto
 {
+    public int InputOrder { get; set; } = -1;
     public string InciName {get; set;} = string.Empty;
     public string SafetyRating {get; set;} = string.Empty;
     public string Category {get; set;} = string.Empty;

@@ -126,7 +126,8 @@ public class HuggingFaceService
             {
                 Name = ingredientName,
                 AiLabel = topLabel,
-                Confidence = Math.Round(topScore, 2)
+                Confidence = Math.Round(topScore, 2),
+                ClassificationStatus = "Classified"
             };
         }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidOperationException)
@@ -187,7 +188,8 @@ public class HuggingFaceService
         {
             Name = ingredientName,
             AiLabel = "Unknown",
-            Confidence = 0
+            Confidence = 0,
+            ClassificationStatus = "Unavailable"
         };
     }
 
