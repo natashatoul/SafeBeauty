@@ -1049,7 +1049,6 @@ button {
 .insight-card,
 .summary-card,
 .profile-card,
-.formula-card,
 .regulatory-note,
 .data-confidence,
 .uv-overview,
@@ -1177,8 +1176,7 @@ button {
   border-radius: 10px;
 }
 
-.profile-grid,
-.formula-grid {
+.profile-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
@@ -1254,30 +1252,6 @@ button {
   margin-bottom: 16px;
 }
 
-.formula-card {
-  padding: 22px 24px;
-}
-
-.formula-card-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.formula-card-description {
-  margin: 0 0 18px;
-}
-
-.formula-card-count {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-align: center;
-  white-space: nowrap;
-}
-
 .ingredient-count {
   margin: 0;
   color: var(--green-dark);
@@ -1285,14 +1259,6 @@ button {
   font-weight: 700;
 }
 
-.ingredient-flag-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 18px;
-}
-
-.ingredient-chips,
 .uv-filter-list {
   display: flex;
   flex-wrap: wrap;
@@ -1307,12 +1273,6 @@ button {
   font-weight: 700;
 }
 
-.ingredient-chip--neutral {
-  background: var(--grey-soft);
-  color: var(--muted);
-}
-
-.ingredient-chip--beneficial,
 .uv-filter-list span {
   background: var(--green-soft);
   color: var(--green-dark);
@@ -1321,11 +1281,6 @@ button {
 .ingredient-chip--caution {
   background: var(--amber-soft);
   color: var(--amber);
-}
-
-.ingredient-chip--red {
-  background: var(--red-soft);
-  color: var(--red);
 }
 
 .uv-overview {
@@ -1379,43 +1334,180 @@ button {
 
 .technical-ingredient-heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 6px 14px;
+  gap: 6px 16px;
   color: var(--text);
 }
 
-.technical-ingredient-heading>span {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.technical-ingredient-details,
-.technical-flags li {
+.technical-ingredient-details {
   display: grid;
   gap: 4px;
 }
 
-.technical-ingredient-details p,
-.technical-flags p {
+.technical-ingredient-details p {
   margin: 0;
+}
+
+.technical-ingredient-details--chemical {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #d7ddd1;
+}
+
+.technical-functions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.technical-function {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.technical-function strong {
+  color: inherit;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.function-info {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.function-info > summary {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  list-style: none;
+  cursor: pointer;
+}
+
+.function-info > summary::-webkit-details-marker {
+  display: none;
+}
+
+.function-info > summary:focus-visible {
+  outline: 2px solid var(--green-dark);
+  outline-offset: 2px;
+}
+
+.function-info-tooltip {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: none;
+  width: min(330px, calc(100vw - 40px));
+  padding: 16px;
+  padding-right: 42px;
+  border: 1px solid rgba(73, 115, 79, 0.22);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 12px 30px rgba(31, 33, 28, 0.16);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.function-info-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.function-info-close:hover {
+  background: var(--grey-soft);
+  color: var(--text);
+}
+
+.function-info-close:focus-visible {
+  outline: 2px solid var(--green-dark);
+  outline-offset: 1px;
+}
+
+.function-info-tooltip .function-purpose {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--green-dark);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.function-info-tooltip p {
+  margin: 0;
+}
+
+.function-plain-language {
+  padding: 11px 12px;
+  border-radius: 8px;
+  background: var(--green-soft);
+  color: var(--text);
+}
+
+.function-description-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--green-dark);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.function-official-description {
+  padding-top: 11px;
+  margin-top: 11px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.function-official-description .function-description-label {
+  color: var(--muted);
+}
+
+.function-info:hover .function-info-tooltip,
+.function-info:focus-within .function-info-tooltip,
+.function-info[open] .function-info-tooltip {
+  display: block;
 }
 
 .technical-ingredient-note {
   color: var(--muted);
   line-height: 1.45;
 }
-
-.technical-flags {
-  display: grid;
-  gap: 10px;
-  padding-left: 20px;
-  margin: 0;
-}
-
 
 /* ==========================================================================
    9. AUTHENTICATION (LOGIN & REGISTER)
@@ -1687,10 +1779,8 @@ button {
   .insight-card p,
   .summary-card p,
   .profile-card p,
-  .formula-card-description,
   .technical-list-note,
-  .technical-ingredient-details p,
-  .technical-flags p {
+  .technical-ingredient-details p {
     font-size: 0.82rem;
   }
 
@@ -1851,8 +1941,7 @@ button {
   }
 
   .summary-grid,
-  .profile-grid,
-  .formula-grid {
+  .profile-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1913,7 +2002,6 @@ button {
   .insight-card,
   .summary-card,
   .profile-card,
-  .formula-card,
   .full-analysis {
     padding: 18px;
   }

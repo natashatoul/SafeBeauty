@@ -87,7 +87,7 @@ function ProfilePage() {
       {isAuthenticated ? (
         <>
           <section className="profile-account-section">
-            <p>You're logged in — your profile can sync across devices.</p>
+            <p>You're logged in - your profile can sync across devices.</p>
             <button type="button" className="secondary-button" onClick={logout}>
               Log out
             </button>

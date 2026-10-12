@@ -6,37 +6,20 @@ import {
   hasLikelyMissingIngredientSeparators,
   parseIngredientList
 } from '../utils/ingredientParsing'
+import { getIngredientReviewGroups } from '../utils/ingredientReview'
 import { saveAnalysis } from '../services/scanHistoryService'
-
-const normaliseDraftEntry = (value = '') => value
-  .trim()
-  .toUpperCase()
-  .replace(/\s+/g, ' ')
-
-const splitBarcodeDraftEntries = (entries, unknownIngredients) => {
-  const unknownNames = new Set((unknownIngredients ?? [])
-    .map((item) => normaliseDraftEntry(item.name)))
-
-  return entries.reduce((groups, entry) => {
-    const name = entry.trim()
-    if (!name) return groups
-
-    const target = unknownNames.has(normaliseDraftEntry(name))
-      ? groups.needsChecking
-      : groups.matched
-    target.push(name)
-    return groups
-  }, { matched: [], needsChecking: [] })
-}
 
 function ManualInputPage() {
   const { state } = useLocation()
-  const initialText = Array.isArray(state?.initialIngredients)
-    ? state.initialIngredients.join(',\n')
+  const initialIngredients = Array.isArray(state?.initialIngredients)
+    ? state.initialIngredients
+    : parseIngredientList(state?.initialText ?? '')
+  const initialText = initialIngredients.length > 0
+    ? initialIngredients.join(',\n')
     : state?.initialText ?? ''
   const isBarcodeDraft = state?.draftSource === 'Open Beauty Facts'
   const lowCoverageReview = state?.lowCoverageReview
-  const originalBarcodeResult = state?.originalBarcodeResult
+  const reviewResult = state?.reviewResult ?? state?.originalBarcodeResult
 
   // HOOK: useState('')
   // Creates a piece of state called "text", starting as an empty string.
@@ -68,11 +51,8 @@ function ManualInputPage() {
     text,
     detectedIngredients
   )
-  const barcodeDraftGroups = isBarcodeDraft
-    ? splitBarcodeDraftEntries(
-      detectedIngredients,
-      originalBarcodeResult?.results?.unknownIngredients
-    )
+  const reviewGroups = reviewResult?.results
+    ? getIngredientReviewGroups(initialIngredients, reviewResult.results)
     : { matched: [], needsChecking: [] }
 
   useLayoutEffect(() => {
@@ -146,18 +126,18 @@ function ManualInputPage() {
   }
 
   const viewBarcodeResultAnyway = async () => {
-    if (!originalBarcodeResult?.results) return
+    if (!reviewResult?.results) return
 
     const savedAnalysis = await saveAnalysis({
-      results: originalBarcodeResult.results,
-      analysisContext: originalBarcodeResult.analysisContext ?? {}
+      results: reviewResult.results,
+      analysisContext: reviewResult.analysisContext ?? {}
     })
 
     navigate('/results', {
       state: {
-        results: originalBarcodeResult.results,
+        results: reviewResult.results,
         analysisContext: savedAnalysis?.analysisContext
-          ?? originalBarcodeResult.analysisContext
+          ?? reviewResult.analysisContext
           ?? {}
       }
     })
@@ -184,7 +164,7 @@ function ManualInputPage() {
               split ingredients, so review the list before analysing again.
             </p>
           </div>
-          {originalBarcodeResult?.results && (
+          {reviewResult?.results && (
             <button type="button" className="secondary-button" onClick={viewBarcodeResultAnyway}>
               View barcode result anyway
             </button>
@@ -204,20 +184,20 @@ function ManualInputPage() {
           rows={8}
         />
 
-        {isBarcodeDraft && (
-          <section className="barcode-draft-review" aria-label="Barcode ingredient match review">
+        {reviewResult?.results && (
+          <section className="barcode-draft-review" aria-label="Previous ingredient match review">
             <article className="barcode-draft-column barcode-draft-column--warning">
-              <h3>Needs checking ({barcodeDraftGroups.needsChecking.length})</h3>
-              <p>These entries were not matched in the barcode analysis. Look for broken words or fragments.</p>
+              <h3>Not matched ({reviewGroups.needsChecking.length})</h3>
+              <p>These entries were not matched in the previous analysis. Check them against the product label.</p>
               <p className="barcode-draft-tip">
-                Compare them with the product label and join broken fragments into full INCI names.
+                Correct spelling and join broken fragments into full INCI names.
                 If a word is split across two lines on the packaging with a hyphen, remove that hyphen:
                 for example, PROPY- + LENE GLYCOL should become PROPYLENE GLYCOL.
                 Avoid deleting entries unless you can confirm they are not ingredients.
               </p>
-              {barcodeDraftGroups.needsChecking.length > 0 ? (
+              {reviewGroups.needsChecking.length > 0 ? (
                 <div className="barcode-draft-chip-list">
-                  {barcodeDraftGroups.needsChecking.map((entry, index) => (
+                  {reviewGroups.needsChecking.map((entry, index) => (
                     <span key={`needs-checking-${entry}-${index}`}>{entry}</span>
                   ))}
                 </div>
@@ -227,15 +207,15 @@ function ManualInputPage() {
             </article>
 
             <article className="barcode-draft-column">
-              <h3>Matched ({barcodeDraftGroups.matched.length})</h3>
-              <p>These entries were recognised or normalised during the barcode analysis.</p>
-              {barcodeDraftGroups.matched.length > 0 ? (
+              <h3>Matched ({reviewGroups.matched.length})</h3>
+              <p>These entries were recognised or normalised in the previous analysis.</p>
+              {reviewGroups.matched.length > 0 ? (
                 <div className="barcode-draft-chip-list">
-                  {barcodeDraftGroups.matched.slice(0, 16).map((entry, index) => (
+                  {reviewGroups.matched.slice(0, 16).map((entry, index) => (
                     <span key={`matched-${entry}-${index}`}>{entry}</span>
                   ))}
-                  {barcodeDraftGroups.matched.length > 16 && (
-                    <span>+{barcodeDraftGroups.matched.length - 16} more</span>
+                  {reviewGroups.matched.length > 16 && (
+                    <span>+{reviewGroups.matched.length - 16} more</span>
                   )}
                 </div>
               ) : (

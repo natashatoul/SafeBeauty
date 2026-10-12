@@ -5,17 +5,15 @@ import {
   Html5QrcodeScannerState,
   Html5QrcodeSupportedFormats
 } from 'html5-qrcode'
-import axios from 'axios'
+import { isAxiosError } from 'axios'
 import { getBarcodeValidationError } from '../utils/barcodeValidation'
 import { getAnalysisCoverage } from '../utils/analysisMetrics'
 import { useProfile } from '../context/ProfileContext'
+import apiClient from '../services/apiClient'
 import { saveAnalysis } from '../services/scanHistoryService'
 import { getBarcodeScanBox, stopScanner, getCameraErrorMessage } from '../utils/scannerHelpers'
 
 
-// Base URL for the backend API, kept in one place so it only needs
-// to change in a single spot (e.g. when deploying to Azure later).
-const API_URL = import.meta.env.VITE_API_URL || '/api'
 const EMPTY_CONDITIONS = []
 const BARCODE_REVIEW_COVERAGE_THRESHOLD = 80
 
@@ -44,8 +42,8 @@ function ScanPage() {
 
   const analyseBarcode = useCallback(async (barcode) => {
     try {
-      const response = await axios.post(
-        `${API_URL}/products/barcode/${encodeURIComponent(barcode)}`,
+      const response = await apiClient.post(
+        `/products/barcode/${encodeURIComponent(barcode)}`,
         {
           userConditions: selectedConditions,
           ageGroup: profile.ageGroup,
@@ -85,7 +83,7 @@ function ScanPage() {
               unknownCount,
               totalCount
             },
-            originalBarcodeResult: {
+            reviewResult: {
               results,
               analysisContext
             }
@@ -105,7 +103,7 @@ function ScanPage() {
       })
       return null
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
+      if (isAxiosError(error) && error.response?.status === 404) {
         alert('Product not found. Try entering ingredients manually.')
         navigate('/manual')
         return null
@@ -113,7 +111,14 @@ function ScanPage() {
 
       return 'The product service is temporarily unavailable. Please try again.'
     }
-  }, [navigate, profile.ageGroup, profile.gender, selectedConditions])
+  }, [
+    navigate,
+    profile.ageGroup,
+    profile.gender,
+    selectedConditions,
+    profile.skinType,
+    profile.hairCondition
+  ])
 
 
   const processBarcode = useCallback(async (barcode) => {
@@ -245,8 +250,8 @@ function ScanPage() {
 
   const scannerStatusText = {
     starting: 'Starting camera…',
-    active: 'Scanner active — looking for a barcode',
-    processing: 'Barcode detected — checking product…',
+    active: 'Scanner active - looking for a barcode',
+    processing: 'Barcode detected - checking product…',
     error: 'Scanner needs attention'
   }[scannerStatus]
 

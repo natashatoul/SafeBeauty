@@ -1,37 +1,32 @@
-import { describe, it, expect } from 'vitest'
-import { getFormulaGroups } from './formulaInterpretation.js'
+import { describe, expect, it } from 'vitest'
+import { getProfileSignals, getUvOverview } from './formulaInterpretation.js'
 
-const ingredient = (inciName, functions, category = '') => ({
-  inciName,
-  function: functions,
-  category
+describe('getProfileSignals', () => {
+  it('separates condition flags from regulatory cautions', () => {
+    const ingredients = [
+      { inciName: 'AVOID INGREDIENT', conditionFlags: [{ flagType: 'Avoid' }] },
+      { inciName: 'BENEFICIAL INGREDIENT', conditionFlags: [{ flagType: 'Beneficial' }] },
+      { inciName: 'RESTRICTED INGREDIENT', category: 'Restricted Substance' },
+      { inciName: 'ORDINARY INGREDIENT', safetyRating: 'Green' }
+    ]
+
+    const signals = getProfileSignals(ingredients)
+
+    expect(signals.avoid.map((item) => item.inciName)).toEqual(['AVOID INGREDIENT'])
+    expect(signals.beneficial.map((item) => item.inciName)).toEqual(['BENEFICIAL INGREDIENT'])
+    expect(signals.regulatory.map((item) => item.inciName)).toEqual(['RESTRICTED INGREDIENT'])
+  })
 })
 
-describe('getFormulaGroups', () => {
-  it('assigns each ingredient to one primary practical role', () => {
-    const groups = getFormulaGroups([
-      ingredient('GLYCERIN', 'HUMECTANT, SKIN CONDITIONING - EMOLLIENT', 'Humectants, Emollients')
+describe('getUvOverview', () => {
+  it('summarises confirmed filter types without inventing one', () => {
+    const overview = getUvOverview([
+      { inciName: 'FILTER A', isUvFilter: true, uvFilterType: 'Mineral/inorganic' },
+      { inciName: 'FILTER B', isUvFilter: true, uvFilterType: 'Organic' },
+      { inciName: 'NOT A FILTER', isUvFilter: false, uvFilterType: '' }
     ])
 
-    expect(groups.length).toBe(1)
-    expect(groups[0].id).toBe('moisture')
-    expect(groups[0].ingredients.map((item) => item.inciName)).toEqual(['GLYCERIN'])
-  })
-
-  it('prefers texture over a secondary cleansing function', () => {
-    const groups = getFormulaGroups([
-      ingredient(
-        'XANTHAN GUM',
-        'EMULSION STABILISING, GEL FORMING, SURFACTANT - CLEANSING, VISCOSITY CONTROLLING'
-      ),
-      ingredient(
-        'TRIETHANOLAMINE',
-        'BUFFERING, SURFACTANT - CLEANSING, SURFACTANT - EMULSIFYING'
-      )
-    ])
-
-    expect(groups.length).toBe(1)
-    expect(groups[0].id).toBe('texture')
-    expect(groups[0].ingredients.map((item) => item.inciName)).toEqual(['XANTHAN GUM', 'TRIETHANOLAMINE'])
+    expect(overview.filters.map((item) => item.inciName)).toEqual(['FILTER A', 'FILTER B'])
+    expect(overview.systemType).toBe('Combination')
   })
 })
