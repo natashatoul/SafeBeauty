@@ -14,7 +14,8 @@ public static class IngredientNormalizer
         "(PARFUM)",
         "(SHEA)",
         "(GRAPE)",
-        "(SUNFLOWER)"
+        "(SUNFLOWER)",
+        "(ORGANIC BROWN SUGAR)"
     ];
     // it is a dictionary of ingredientd that was detected like unknown but in reality ir is synonims
     private static readonly Dictionary<string, string> ExactAliases = new(StringComparer.Ordinal)
@@ -52,6 +53,10 @@ public static class IngredientNormalizer
         @"\s*\.?\(\d+/\d+\)\s*[.;,]?\s*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private static readonly Regex IlnFormulaReferenceSuffix = new(
+        @"\s+ILN\d+\s*$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private static readonly Regex OrganicIngredientAnnotation = new(
         @"\s*\*+\s*ORGANIC\s+INGREDIENT\s*$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -69,7 +74,7 @@ public static class IngredientNormalizer
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     private static readonly Regex BotanicalCommonName = new(
-        @"^(?<latin>[A-Z][A-Z.'-]+\s+[A-Z][A-Z.'-]+(?:\s+[A-Z][A-Z.'-]+)?)\s+\((?!NANO\b)[A-Z][A-Z '\-]+\)\s+(?<part>BARK|BRAN|BUD|BULB|BUTTER|CALLUS|EXTRACT|FLOWER|FRUIT|GERM|GUM|HUSK|JUICE|KERNEL|LEAF|OIL|PEEL|POWDER|PULP|RESIN|RHIZOME|ROOT|SEED|SHOOT|SPROUT|STARCH|STEM|WATER|WAX)\b(?<remainder>.*)$",
+        @"^(?<latin>[A-Z][A-Z.'-]+\s+[A-Z][A-Z.'-]+(?:\s+[A-Z][A-Z.'-]+)?)\s+\((?!NANO\b)[A-Z][A-Z.' '\-]+\)\s+(?<part>BARK|BRAN|BUD|BULB|BUTTER|CALLUS|EXTRACT|FLOWER|FRUIT|GERM|GUM|HUSK|JUICE|KERNEL|LEAF|OIL|PEEL|POWDER|PULP|RESIN|RHIZOME|ROOT|SEED|SHOOT|SPROUT|STARCH|STEM|WATER|WAX)\b(?<remainder>.*)$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
 
@@ -129,6 +134,7 @@ public static class IngredientNormalizer
         // intentionally an exact F.I.L. pattern, not a broad bracket remover.
         normalized = FormulaReferenceSuffix.Replace(normalized, string.Empty);
         normalized = NumericFormulaReferenceSuffix.Replace(normalized, string.Empty);
+        normalized = IlnFormulaReferenceSuffix.Replace(normalized, string.Empty);
 
         // Ingredient lists copied from websites often keep the sentence-ending
         // full stop on the final ingredient.

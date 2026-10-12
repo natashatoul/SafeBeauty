@@ -7,11 +7,15 @@ public static class IngredientListParser
     private static readonly char[] Separators = [',', '•', '･', '・', '·', ';', '\r', '\n'];
     private const char ProtectedDot = '\u2024';
     private const char ProtectedComma = '\u2063';
+    private const char ProtectedSemicolon = '\u2064';
     private static readonly Regex FilAbbreviation = new(
         @"F\.I\.L\.",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex NumericComma = new(
         @"(?<=\d),(?=\d)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex ParentheticalText = new(
+        @"\([^)]*\)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex CompoundSuffixLineBreak = new(
         @"\b(SEED|FRUIT|KERNEL|LEAF|ROOT|FLOWER|STEM)\s*[\r\n]+\s*(OIL|EXTRACT|WATER|WAX|BUTTER)\b",
@@ -40,6 +44,34 @@ public static class IngredientListParser
         .ApplyKnownFragmentJoins()
         .Where(entry => !string.IsNullOrWhiteSpace(entry))
         .ToList();
+
+    public static List<string> Parse(
+        string entry,
+        IEnumerable<string>? knownNames = null)
+    {
+        var protectedEntry = entry;
+        foreach (var knownName in (knownNames ?? [])
+            .Where(name => name.Contains(',') || name.Contains(';'))
+            .OrderByDescending(name => name.Length))
+        {
+            var protectedName = knownName
+                .Replace(',', ProtectedComma)
+                .Replace(';', ProtectedSemicolon);
+            protectedEntry = protectedEntry.Replace(
+                knownName,
+                protectedName,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        return protectedEntry
+            .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(name => name
+                .Replace(ProtectedComma, ',')
+                .Replace(ProtectedSemicolon, ';'))
+            .Where(name => name.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
 
     // A very long entry with many words but no reliable punctuation is usually
     // an OCR/copy-paste result whose original line breaks were lost. It cannot
@@ -127,6 +159,9 @@ public static class IngredientListParser
             entry ?? string.Empty,
             "$1 $2");
         protectedEntry = FilAbbreviation.Replace(
+            protectedEntry,
+            match => match.Value.Replace('.', ProtectedDot));
+        protectedEntry = ParentheticalText.Replace(
             protectedEntry,
             match => match.Value.Replace('.', ProtectedDot));
         protectedEntry = NumericComma.Replace(

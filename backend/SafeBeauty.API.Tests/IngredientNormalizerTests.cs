@@ -48,6 +48,9 @@ public class IngredientNormalizerTests
     [InlineData("Yellow 5 (CI 19140)", "CI 19140")]
     [InlineData("Blue 1 (CI 42090)", "CI 42090")]
     [InlineData("Chromium Hydroxide Green *(CI 77289)*", "CI 77289")]
+    [InlineData("Red 4 (CI 14700) ILN52532", "CI 14700")]
+    [InlineData("Sigesbeckia Orientalis (St. Paul's Wort) Extract", "SIGESBECKIA ORIENTALIS EXTRACT")]
+    [InlineData("Sucrose (Organic Brown Sugar)", "SUCROSE")]
     [InlineData("TOCOPHEROL.(409/011)", "TOCOPHEROL")]
     [InlineData(
         "Lactobacillus/Centella Asiatica/Gleditsia Sinensis Thom/Houttuynia CordataExtract/ Phellodendron Amurense Bark/Polygonum CuspidatumRoot/Prunella Vulgaris/Torilis Japonica Extract Ferment Filtrate",

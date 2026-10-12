@@ -55,6 +55,18 @@ public class IngredientListParserTests
     }
 
     [Fact]
+    public void Parse_WithKnownNamesPreservesCommaInsideOfficialName()
+    {
+        const string hybrid = "CITRUS PARADISI, X C. RETICULATA PEEL EXTRACT";
+
+        var result = IngredientListParser.Parse(
+            $"{hybrid}, ASCORBIC ACID",
+            [hybrid, "ASCORBIC ACID"]);
+
+        Assert.Equal([hybrid, "ASCORBIC ACID"], result);
+    }
+
+    [Fact]
     public void Parse_PreservesBotanicalSuffixSplitByCopiedLineBreak()
     {
         var result = IngredientListParser.Parse([
@@ -112,6 +124,18 @@ public class IngredientListParserTests
         ]);
 
         Assert.Equal(["Aqua", "Xanthan Gum (F.I.L. N70032039/1)."], result);
+    }
+
+    [Fact]
+    public void Parse_DoesNotSplitPeriodInsideParentheticalCommonName()
+    {
+        var result = IngredientListParser.Parse([
+            "SIGESBECKIA ORIENTALIS (ST. PAUL'S WORT) EXTRACT. TOCOPHEROL"
+        ]);
+
+        Assert.Equal(
+            ["SIGESBECKIA ORIENTALIS (ST. PAUL'S WORT) EXTRACT", "TOCOPHEROL"],
+            result);
     }
 
     [Fact]
